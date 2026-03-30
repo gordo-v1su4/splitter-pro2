@@ -1,0 +1,10 @@
+.venv/
+backend/.venv/
+backend/.pytest_cache/
+backend/__pycache__/
+backend/src/backend/__pycache__/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+data/jobs/
+*.pyc

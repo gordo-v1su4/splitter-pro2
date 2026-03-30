@@ -1,0 +1,100 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+import importlib
+
+from fastapi.testclient import TestClient
+
+from backend.models import JobManifest, JobState, JobStatus, SegmentRecord
+
+
+def test_create_job_endpoint(monkeypatch, client: TestClient) -> None:
+    app_module = importlib.import_module("backend.app")
+
+    def fake_process(job_id: str) -> None:
+        from backend.storage import save_manifest, update_state
+
+        save_manifest(
+            JobManifest(
+                job_id=job_id,
+                source_video="clip.mp4",
+                duration_seconds=3.0,
+                frame_rate=30.0,
+                frame_count=90,
+                segment_count=1,
+                reassembled_path="clips/reassembled.mp4",
+                keyframes_zip_path="exports/keyframes.zip",
+                segments_zip_path="exports/segments.zip",
+                contact_sheet_path="exports/contact-sheet.jpg",
+                reconstruction_audit={
+                    "original_frame_count": 90,
+                    "reconstructed_frame_count": 90,
+                    "expected_segment_frames": 90,
+                    "frame_delta": 0,
+                    "original_duration_seconds": 3.0,
+                    "reconstructed_duration_seconds": 3.0,
+                    "duration_delta_seconds": 0.0,
+                },
+                segments=[
+                    SegmentRecord(
+                        index=1,
+                        start_frame=0,
+                        end_frame=90,
+                        frame_count=90,
+                        start_seconds=0.0,
+                        end_seconds=3.0,
+                        duration_seconds=3.0,
+                        clip_path="clips/segment-001.mp4",
+                        thumbnail_path="thumbnails/segment-001.jpg",
+                        label="00:00:00.000 - 00:00:03.000",
+                    )
+                ],
+                created_at=datetime.now(timezone.utc),
+            )
+        )
+        update_state(
+            job_id,
+            status=JobStatus.COMPLETED,
+            stage="completed",
+            duration_seconds=3.0,
+            segment_count=1,
+            progress_total=1,
+            progress_completed=1,
+        )
+
+    monkeypatch.setattr(app_module, "process_job", fake_process)
+
+    response = client.post(
+        "/api/jobs",
+        files={"file": ("clip.mp4", b"not-a-real-video", "video/mp4")},
+    )
+    assert response.status_code == 200
+    payload = response.json()["job"]
+    assert payload["status"] == "queued"
+
+    job_state = client.get(f"/api/jobs/{payload['job_id']}")
+    assert job_state.status_code == 200
+    assert job_state.json()["status"] == "completed"
+
+    result = client.get(f"/api/jobs/{payload['job_id']}/result")
+    assert result.status_code == 200
+    assert result.json()["manifest"]["segment_count"] == 1
+
+
+def test_job_result_while_processing_returns_conflict(monkeypatch, client: TestClient) -> None:
+    app_module = importlib.import_module("backend.app")
+
+    def leave_processing(job_id: str) -> None:
+        from backend.storage import update_state
+
+        update_state(job_id, status=JobStatus.PROCESSING, stage="extracting-segments")
+
+    monkeypatch.setattr(app_module, "process_job", leave_processing)
+    response = client.post(
+        "/api/jobs",
+        files={"file": ("clip.mp4", b"still-not-a-real-video", "video/mp4")},
+    )
+    assert response.status_code == 200
+    job_id = response.json()["job"]["job_id"]
+    result = client.get(f"/api/jobs/{job_id}/result")
+    assert result.status_code == 409
