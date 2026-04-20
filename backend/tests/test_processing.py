@@ -3,12 +3,36 @@ from pathlib import Path
 from PIL import Image
 
 from backend import storage
-from backend.processing import build_contact_sheet, format_seconds
+from backend.processing import (
+    SegmentBoundary,
+    build_contact_sheet,
+    format_seconds,
+    merge_short_segments,
+)
 
 
 def test_format_seconds_renders_timecode() -> None:
     assert format_seconds(0) == "00:00:00.000"
     assert format_seconds(61.234) == "00:01:01.234"
+
+
+def test_merge_short_segments_joins_spurious_double_cut() -> None:
+    fps = 30.0
+    a = SegmentBoundary(1, 0, 100, 0.0, 100 / fps, fps)
+    thin = SegmentBoundary(2, 100, 104, 100 / fps, 104 / fps, fps)
+    b = SegmentBoundary(3, 104, 200, 104 / fps, 200 / fps, fps)
+    merged = merge_short_segments([a, thin, b], min_frames=12)
+    assert len(merged) == 2
+    assert merged[0].end_frame == 104
+    assert merged[1].start_frame == 104
+    assert merged[0].index == 1 and merged[1].index == 2
+
+
+def test_thumbnail_seconds_targets_midshot() -> None:
+    fps = 30.0
+    seg = SegmentBoundary(1, 0, 300, 0.0, 10.0, fps)
+    ts = seg.thumbnail_seconds
+    assert 4.5 < ts < 5.5
 
 
 def test_build_contact_sheet_exports_16_by_9_canvas(tmp_path: Path) -> None:

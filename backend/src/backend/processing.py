@@ -10,7 +10,7 @@ from fractions import Fraction
 
 from fastapi import HTTPException
 from PIL import Image, ImageOps
-from scenedetect import AdaptiveDetector, ContentDetector, detect
+from scenedetect import AdaptiveDetector, ContentDetector, SceneManager, open_video
 
 from .config import get_settings
 from .models import JobManifest, JobStatus, SegmentRecord
@@ -48,7 +48,55 @@ class SegmentBoundary:
 
     @property
     def thumbnail_seconds(self) -> float:
-        return min(self.end_seconds - self.boundary_guard, self.start_seconds + self.frame_duration * 0.5)
+        """Prefer the temporal midpoint of the shot so stills sit on stable frames, not cut edges."""
+        if self.duration_seconds <= 0:
+            return self.start_seconds
+        margin = max(self.boundary_guard, self.frame_duration * 2.0)
+        mid = self.start_seconds + self.duration_seconds * 0.5
+        lo = self.start_seconds + margin
+        hi = self.end_seconds - margin
+        if hi <= lo:
+            span = max(self.frame_duration, self.duration_seconds)
+            return min(
+                max(mid, self.start_seconds),
+                max(self.start_seconds, self.end_seconds - span * 0.5),
+            )
+        return min(max(mid, lo), hi)
+
+
+def merge_short_segments(segments: list[SegmentBoundary], min_frames: int) -> list[SegmentBoundary]:
+    """Join runs shorter than ``min_frames`` into a neighbor to remove double-triggered cuts."""
+    if min_frames <= 0 or len(segments) <= 1:
+        return segments
+
+    merged: list[SegmentBoundary] = []
+    acc = segments[0]
+    for nxt in segments[1:]:
+        if acc.frame_count < min_frames or nxt.frame_count < min_frames:
+            acc = SegmentBoundary(
+                index=acc.index,
+                start_frame=acc.start_frame,
+                end_frame=nxt.end_frame,
+                start_seconds=acc.start_seconds,
+                end_seconds=nxt.end_seconds,
+                frame_rate=acc.frame_rate,
+            )
+        else:
+            merged.append(acc)
+            acc = nxt
+    merged.append(acc)
+
+    return [
+        SegmentBoundary(
+            index=i + 1,
+            start_frame=s.start_frame,
+            end_frame=s.end_frame,
+            start_seconds=s.start_seconds,
+            end_seconds=s.end_seconds,
+            frame_rate=s.frame_rate,
+        )
+        for i, s in enumerate(merged)
+    ]
 
 
 def run_ffmpeg(command: list[str]) -> None:
@@ -141,9 +189,14 @@ def build_segments(video_path: Path, duration_seconds: float, frame_rate: float,
             min_scene_len=settings.min_scene_len_frames,
             min_content_val=settings.min_content_val,
             window_width=settings.adaptive_window_width,
+            luma_only=settings.adaptive_luma_only,
         )
 
-    scene_list = detect(str(video_path), detector, show_progress=False)
+    video = open_video(str(video_path), backend=settings.scenedetect_backend)
+    scene_manager = SceneManager()
+    scene_manager.add_detector(detector)
+    scene_manager.detect_scenes(video=video, show_progress=False)
+    scene_list = scene_manager.get_scene_list(start_in_scene=False)
     if not scene_list:
         return [
             SegmentBoundary(
@@ -175,16 +228,19 @@ def build_segments(video_path: Path, duration_seconds: float, frame_rate: float,
             )
         )
 
-    return segments or [
-        SegmentBoundary(
-            index=1,
-            start_frame=0,
-            end_frame=total_frames,
-            start_seconds=0.0,
-            end_seconds=duration_seconds,
-            frame_rate=frame_rate,
-        )
-    ]
+    if not segments:
+        return [
+            SegmentBoundary(
+                index=1,
+                start_frame=0,
+                end_frame=total_frames,
+                start_seconds=0.0,
+                end_seconds=duration_seconds,
+                frame_rate=frame_rate,
+            )
+        ]
+
+    return merge_short_segments(segments, settings.merge_short_scene_frames)
 
 
 def extract_clip(video_path: Path, output_path: Path, segment: SegmentBoundary) -> None:
