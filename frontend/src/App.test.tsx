@@ -107,7 +107,7 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByText(/storyboard ready/i)).toBeInTheDocument()
     })
-    expect(screen.getByText(/segment 1/i)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /export keyframes zip/i })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /segment 1 keyframe/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /keyframes\.zip/i })).toBeInTheDocument()
   })
 })

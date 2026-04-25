@@ -5,19 +5,42 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '../../lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/70 disabled:pointer-events-none disabled:opacity-55',
+  [
+    'inline-flex items-center justify-center gap-1.5 rounded-sm font-medium tracking-tight',
+    'transition-colors duration-150 outline-none',
+    'focus-visible:ring-1 focus-visible:ring-[color:var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0b]',
+    'disabled:pointer-events-none disabled:opacity-40',
+  ].join(' '),
   {
     variants: {
       variant: {
-        primary:
-          'bg-zinc-100 px-4 py-2.5 text-zinc-950 shadow-[0_10px_24px_rgba(0,0,0,0.18)] hover:-translate-y-0.5 hover:bg-white',
-        secondary:
-          'border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-zinc-100 hover:-translate-y-0.5 hover:border-zinc-500 hover:bg-zinc-800',
-        ghost: 'px-4 py-2.5 text-zinc-300 hover:bg-zinc-900 hover:text-zinc-50',
+        primary: [
+          'bg-[color:var(--color-accent)] text-[#0a0a0b]',
+          'hover:bg-[#c4f06b]',
+        ].join(' '),
+        secondary: [
+          'border border-white/[0.08] bg-white/[0.02] text-zinc-200',
+          'hover:bg-white/[0.05] hover:border-white/[0.16] hover:text-zinc-50',
+        ].join(' '),
+        ghost: [
+          'text-zinc-400',
+          'hover:bg-white/[0.04] hover:text-zinc-100',
+        ].join(' '),
+        outline: [
+          'border border-white/[0.12] text-zinc-200',
+          'hover:bg-white/[0.04] hover:border-white/[0.24]',
+        ].join(' '),
+      },
+      size: {
+        /* fixed height so padding/line-height can’t balloon the control */
+        default: 'h-10 min-h-10 px-4 text-[13px] leading-none',
+        /* ~half of default — Process video, dense chrome */
+        sm: 'h-7 min-h-7 px-2.5 py-0 text-[10px] leading-none gap-1',
       },
     },
     defaultVariants: {
       variant: 'primary',
+      size: 'default',
     },
   },
 )
@@ -29,9 +52,9 @@ export interface ButtonProps
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : 'button'
-    return <Comp className={cn(buttonVariants({ variant }), className)} ref={ref} {...props} />
+    return <Comp className={cn(buttonVariants({ variant, size }), className)} ref={ref} {...props} />
   },
 )
 

@@ -1,5 +1,7 @@
 # Splitter Pro 2
 
+![Splitter Pro 2 — source, pipeline, and storyboard grid](docs/screenshot.webp)
+
 Splitter Pro 2 is a local-first video review app that detects hard cuts, splits them into scene clips, and renders a storyboard with a still image plus previewable clip for every segment.
 
 ## Stack

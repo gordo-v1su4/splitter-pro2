@@ -1,19 +1,43 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Space Grotesk", sans-serif;
-  --font-body: "IBM Plex Sans", sans-serif;
+  --font-display: "Instrument Serif", "Times New Roman", serif;
+  --font-body: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+
+  --color-ink-0: #060607;
+  --color-ink-50: #0a0a0b;
+  --color-ink-100: #0f0f11;
+  --color-ink-200: #141417;
+  --color-ink-300: #1c1c20;
+  --color-ink-400: #26262c;
+  --color-ink-500: #3a3a42;
+  --color-ink-600: #5a5a64;
+  --color-ink-700: #8a8a94;
+  --color-ink-800: #c4c4cc;
+  --color-ink-900: #f4f4f5;
+
+  /* Muted utility accent — not neon; keeps chrome calm */
+  --color-accent: #6f7d64;
+  --color-accent-soft: rgba(111, 125, 100, 0.12);
+  --color-accent-line: rgba(111, 125, 100, 0.35);
+
+  --color-warn: #f5b243;
+  --color-fail: #f87171;
+  --color-ok: #6f7d64;
 }
 
 :root {
   font-family: var(--font-body);
-  color: #1c1917;
-  background: #fff8f1;
+  color: var(--color-ink-900);
+  background: var(--color-ink-0);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01", "cv11";
+  color-scheme: dark;
 }
 
 * {
@@ -27,6 +51,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
+  background: var(--color-ink-0);
 }
 
 button,
@@ -42,4 +67,60 @@ a {
 
 #root {
   min-height: 100vh;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-ink-0);
+}
+
+/* Hairline utility */
+.hairline {
+  background-image: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.18), transparent);
+  height: 1px;
+  width: 100%;
+}
+
+/* Custom scrollbar — thin, dark */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.92); }
+}
+
+.dot-pulse {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+@keyframes scan-line {
+  0% { transform: translateX(-30%); }
+  100% { transform: translateX(130%); }
+}
+
+.scan-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(180, 240, 74, 0.35) 50%,
+    transparent 100%
+  );
+  width: 30%;
+  animation: scan-line 1.8s ease-in-out infinite;
 }

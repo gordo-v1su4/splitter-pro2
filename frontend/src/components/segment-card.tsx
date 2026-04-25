@@ -1,54 +1,113 @@
-import { Film, ImageIcon } from 'lucide-react'
+import { Download, Film, Image as ImageIconLucide } from 'lucide-react'
+import { useState } from 'react'
 
 import { assetUrl, type SegmentRecord } from '../lib/api'
-import { formatDuration } from '../lib/utils'
-import { Button } from './ui/button'
-import { Card, CardContent } from './ui/card'
+import { cn, formatDuration } from '../lib/utils'
+import { VideoTile } from './video-tile'
+
+type MediaTab = 'still' | 'clip'
 
 export function SegmentCard({ jobId, segment }: { jobId: string; segment: SegmentRecord }) {
   const clipSrc = assetUrl(jobId, segment.clip_path)
   const imageSrc = assetUrl(jobId, segment.thumbnail_path)
+  const [tab, setTab] = useState<MediaTab>('still')
+
+  const softOverlay = (
+    <>
+      <span className="pointer-events-none absolute left-2 top-2 bg-black/40 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-zinc-500/95">
+        #{segment.index}
+      </span>
+      <span className="pointer-events-none absolute bottom-2 right-2 font-mono text-[9px] tabular-nums text-zinc-500/90">
+        {formatDuration(segment.duration_seconds)}
+      </span>
+    </>
+  )
 
   return (
-    <Card className="overflow-hidden border-zinc-800 bg-zinc-950/94">
+    <article
+      className="group flex flex-col border border-white/[0.04] bg-black/20 transition-colors
+        duration-200 hover:border-white/[0.08]"
+    >
       <div className="relative">
-        <img
-          className="aspect-video w-full object-cover"
-          src={imageSrc}
-          alt={`Segment ${segment.index} thumbnail`}
-          loading="lazy"
-        />
-        <div className="absolute left-3 top-3 rounded-md bg-black/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-100">
-          Segment {segment.index}
+        {tab === 'still' ? (
+          <div className="relative aspect-video w-full overflow-hidden bg-zinc-950/80">
+            <img
+              src={imageSrc}
+              alt={`Segment ${segment.index} keyframe`}
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/15 to-transparent" />
+            {softOverlay}
+          </div>
+        ) : (
+          <VideoTile
+            src={clipSrc}
+            poster={imageSrc}
+            playStyle="subtle"
+            ariaLabel={`Play segment ${segment.index} clip`}
+            overlay={softOverlay}
+          />
+        )}
+
+        <div
+          className="absolute right-1.5 top-1.5 z-10 flex rounded border border-white/[0.06] bg-black/45 p-px backdrop-blur-sm"
+          role="group"
+          aria-label="View keyframe or clip"
+        >
+          <button
+            type="button"
+            aria-pressed={tab === 'still'}
+            title="Keyframe"
+            onClick={() => setTab('still')}
+            className={cn(
+              'flex h-6 w-6 items-center justify-center rounded-[1px] transition-colors',
+              tab === 'still' ? 'bg-white/[0.09] text-zinc-200/90' : 'text-zinc-500/80 hover:text-zinc-400/90',
+            )}
+          >
+            <ImageIconLucide className="h-3 w-3" strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            aria-pressed={tab === 'clip'}
+            title="Clip"
+            onClick={() => setTab('clip')}
+            className={cn(
+              'flex h-6 w-6 items-center justify-center rounded-[1px] transition-colors',
+              tab === 'clip' ? 'bg-white/[0.09] text-zinc-200/90' : 'text-zinc-500/80 hover:text-zinc-400/90',
+            )}
+          >
+            <Film className="h-3 w-3" strokeWidth={1.5} />
+          </button>
         </div>
       </div>
-      <CardContent className="space-y-3 px-4 pb-4 pt-4">
-        <div className="space-y-1">
-          <p className="font-display text-lg leading-tight tracking-[-0.05em] text-zinc-50">{segment.label}</p>
-          <p className="text-xs text-zinc-400">
-            {formatDuration(segment.duration_seconds)} · {segment.frame_count} frames
+
+      <div className="flex items-start gap-2 px-2.5 py-2">
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className="break-all font-mono text-[10px] leading-snug text-zinc-500/95">{segment.label}</p>
+          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-600/90">
+            {segment.frame_count} fr · idx {segment.index}
           </p>
         </div>
-
-        <div className="overflow-hidden rounded-md border border-zinc-800 bg-black">
-          <video className="aspect-video w-full" src={clipSrc} controls preload="metadata" />
+        <div className="flex shrink-0 items-center gap-1">
+          <a
+            href={imageSrc}
+            download
+            title="Download keyframe"
+            className="flex h-6 w-6 items-center justify-center text-zinc-500/80 transition-colors hover:text-zinc-300/90"
+          >
+            <ImageIconLucide className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </a>
+          <a
+            href={clipSrc}
+            download
+            title="Download clip"
+            className="flex h-6 w-6 items-center justify-center text-zinc-500/80 transition-colors hover:text-zinc-300/90"
+          >
+            <Download className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </a>
         </div>
-
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Button asChild variant="secondary" className="px-3 py-2 text-sm">
-            <a href={clipSrc} download>
-              <Film className="h-3.5 w-3.5" />
-              Download clip
-            </a>
-          </Button>
-          <Button asChild variant="ghost" className="px-3 py-2 text-sm">
-            <a href={imageSrc} download>
-              <ImageIcon className="h-3.5 w-3.5" />
-              Download still
-            </a>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </article>
   )
 }

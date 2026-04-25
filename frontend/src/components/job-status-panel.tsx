@@ -1,89 +1,186 @@
 import { AlertTriangle, CheckCircle2, LoaderCircle } from 'lucide-react'
 
-import type { JobState } from '../lib/api'
-import { Badge } from './ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import type { JobManifest, JobState } from '../lib/api'
+import { formatDuration } from '../lib/utils'
+import { Card, CardContent } from './ui/card'
 import { Progress } from './ui/progress'
 
 function toPercentage(job: JobState | null) {
   if (!job || !job.progress_total) {
-    return job?.status === 'completed' ? 100 : 12
+    return job?.status === 'completed' ? 100 : 8
   }
   return Math.round((job.progress_completed / job.progress_total) * 100)
 }
 
-export function JobStatusPanel({ job, error }: { job: JobState | null; error: string | null }) {
+type Tone = 'idle' | 'working' | 'completed' | 'failed'
+
+function resolveTone(job: JobState | null): Tone {
+  if (!job) return 'idle'
+  if (job.status === 'failed') return 'failed'
+  if (job.status === 'completed') return 'completed'
+  return 'working'
+}
+
+const toneStyles: Record<Tone, { dot: string; text: string; headline: string; sub: string }> = {
+  idle: {
+    dot: 'bg-zinc-600',
+    text: 'text-zinc-500',
+    headline: 'Awaiting',
+    sub: 'Drop a video to start the pipeline.',
+  },
+  working: {
+    dot: 'bg-zinc-500/80 dot-pulse',
+    text: 'text-zinc-400/90',
+    headline: 'Working',
+    sub: 'Polling every 1.5 seconds.',
+  },
+  completed: {
+    dot: 'bg-zinc-500/70',
+    text: 'text-zinc-400/90',
+    headline: 'Done',
+    sub: 'Storyboard rendered below.',
+  },
+  failed: {
+    dot: 'bg-red-400',
+    text: 'text-red-300',
+    headline: 'Failed',
+    sub: 'See the error below.',
+  },
+}
+
+export function JobStatusPanel({
+  job,
+  error,
+  manifest,
+}: {
+  job: JobState | null
+  error: string | null
+  manifest: JobManifest | null
+}) {
   const percentage = toPercentage(job)
+  const tone = resolveTone(job)
   const visibleError = job?.status === 'failed' ? job.error ?? error : error
-  const summaryTone =
-    job?.status === 'failed'
-      ? 'border-red-950/80 bg-[linear-gradient(135deg,rgba(127,29,29,0.32),rgba(24,24,27,0.96)_42%,rgba(24,24,27,0.96)_100%)]'
-      : job?.status === 'completed'
-        ? 'border-emerald-950/80 bg-[linear-gradient(135deg,rgba(6,95,70,0.26),rgba(24,24,27,0.96)_42%,rgba(24,24,27,0.96)_100%)]'
-        : 'border-amber-950/80 bg-[linear-gradient(135deg,rgba(146,64,14,0.22),rgba(24,24,27,0.96)_42%,rgba(24,24,27,0.96)_100%)]'
-  const statusTone =
-    job?.status === 'failed'
-      ? 'bg-[linear-gradient(135deg,rgba(127,29,29,0.72),rgba(69,10,10,0.56))] text-red-100 ring-red-800'
-      : job?.status === 'completed'
-        ? 'bg-[linear-gradient(135deg,rgba(6,95,70,0.72),rgba(4,47,46,0.56))] text-emerald-100 ring-emerald-800'
-        : 'bg-[linear-gradient(135deg,rgba(146,64,14,0.52),rgba(39,39,42,0.72))] text-zinc-100 ring-zinc-700'
+  const styles = toneStyles[tone]
+
+  const progressTotal = job?.progress_total ?? 0
+  const progressDone = job?.progress_completed ?? 0
+  const dotCount = Math.min(Math.max(progressTotal || 0, 12), 48)
+  const dots = Array.from({ length: dotCount })
 
   return (
-    <Card className="border-zinc-800 bg-zinc-950/92">
-      <CardHeader>
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <CardTitle>Processing status</CardTitle>
-            <CardDescription>Polling every 1.5 seconds until the storyboard is ready.</CardDescription>
+    <Card>
+      <CardContent className="flex h-full flex-col gap-4 pb-5 pt-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+            <span className="h-px w-6 bg-zinc-700" />
+            <span>Pipeline</span>
           </div>
-          <Badge className={statusTone}>{job?.status ?? 'idle'}</Badge>
+          <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.24em]">
+            <span className={`h-1.5 w-1.5 rounded-full ${styles.dot}`} />
+            <span className={styles.text}>{job?.status ?? 'idle'}</span>
+          </span>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+
+        <div className="flex items-end justify-between gap-4">
+          <div className="space-y-1">
+            <p className="font-mono text-sm font-medium leading-none tracking-tight text-zinc-400/95">
+              {styles.headline}
+            </p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+              {styles.sub}
+            </p>
+          </div>
+          <div className="text-right leading-none">
+            <p className="font-mono text-2xl font-medium tracking-tight text-zinc-500/90 tabular-nums">
+              {percentage}
+              <span className="ml-0.5 text-sm text-zinc-600/90">%</span>
+            </p>
+          </div>
+        </div>
+
+        <Progress value={percentage} />
+
         {job ? (
-          <>
-            <div className={`flex items-start gap-3 rounded-md border px-4 py-3 ${summaryTone}`}>
-              <div className="mt-0.5">
-                {job.status === 'failed' ? (
-                  <AlertTriangle className="h-5 w-5 text-red-600" />
-                ) : job.status === 'completed' ? (
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                ) : (
-                  <LoaderCircle className="h-5 w-5 animate-spin text-amber-600" />
-                )}
-              </div>
-              <div className="space-y-1">
-                <p className="break-all font-medium text-zinc-50">{job.source_video}</p>
-                <p className="text-sm text-zinc-400">
-                  Stage: <span className="font-medium text-zinc-200">{job.stage}</span>
-                </p>
-                {job.status === 'failed' && job.error ? <p className="text-sm text-red-300">{job.error}</p> : null}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm text-zinc-400">
-                <span>
-                  {job.progress_completed}/{job.progress_total || '...'} extracted
-                </span>
-                <span>{percentage}%</span>
-              </div>
-              <Progress
-                value={percentage}
-                className={
-                  job?.status === 'failed'
-                    ? '[&>div]:bg-gradient-to-r [&>div]:from-red-300 [&>div]:via-red-500 [&>div]:to-red-700'
-                    : job?.status === 'completed'
-                      ? '[&>div]:bg-gradient-to-r [&>div]:from-emerald-200 [&>div]:via-emerald-400 [&>div]:to-teal-500'
-                      : '[&>div]:bg-gradient-to-r [&>div]:from-amber-200 [&>div]:via-amber-400 [&>div]:to-zinc-100'
-                }
-              />
-            </div>
-          </>
-        ) : (
-          <p className="text-sm text-zinc-400">No active job yet. Upload a video to start the first pass.</p>
-        )}
+          <div className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+            <span>
+              <span className="text-zinc-300">{progressDone}</span>
+              <span className="mx-1 text-zinc-700">/</span>
+              <span>{progressTotal || '—'}</span>
+              <span className="ml-2 text-zinc-600">extracted</span>
+            </span>
+            <span>
+              stage <span className="ml-2 text-zinc-300">{job.stage}</span>
+            </span>
+            {job.duration_seconds ? (
+              <span>
+                source <span className="ml-2 text-zinc-300">{formatDuration(job.duration_seconds)}</span>
+              </span>
+            ) : null}
+            {job.segment_count ? (
+              <span>
+                cuts <span className="ml-2 text-zinc-300">{job.segment_count}</span>
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
+        {job ? (
+          <div className="grid grid-cols-12 gap-1 sm:grid-cols-16 lg:grid-cols-12 xl:grid-cols-16">
+            {dots.map((_, idx) => {
+              const filled =
+                progressTotal > 0
+                  ? idx < Math.round((progressDone / progressTotal) * dotCount)
+                  : tone === 'working' && idx < (Date.now() / 200) % dotCount
+              const dimmed = !filled && tone !== 'completed'
+              return (
+                <span
+                  key={idx}
+                  className={[
+                    'h-1.5 transition-colors duration-300',
+                    filled || tone === 'completed'
+                      ? 'bg-zinc-500/50'
+                      : dimmed
+                        ? 'bg-white/[0.06]'
+                        : 'bg-white/[0.06]',
+                  ].join(' ')}
+                />
+              )
+            })}
+          </div>
+        ) : null}
+
+        <div className="mt-auto flex items-start gap-3 border-t border-white/[0.06] pt-4">
+          <div className="mt-0.5 shrink-0">
+            {!job ? (
+              <span className="block h-3.5 w-3.5 border border-white/[0.12]" />
+            ) : job.status === 'failed' ? (
+              <AlertTriangle className="h-3.5 w-3.5 text-red-400" />
+            ) : job.status === 'completed' ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-zinc-500/90" />
+            ) : (
+              <LoaderCircle className="h-3.5 w-3.5 animate-spin text-zinc-500/80" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <p className="break-all font-mono text-[11px] text-zinc-300">
+              {job?.source_video ?? 'No active job yet.'}
+            </p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">
+              {manifest
+                ? `${manifest.frame_rate.toFixed(2)} fps · ${manifest.frame_count} frames`
+                : job
+                  ? job.duration_seconds
+                    ? `${formatDuration(job.duration_seconds)} · scanning`
+                    : 'inspecting source'
+                  : 'idle'}
+            </p>
+          </div>
+        </div>
+
         {visibleError && job?.status !== 'completed' ? (
-          <p className="rounded-md bg-red-950/60 px-4 py-3 text-sm text-red-200">{visibleError}</p>
+          <div className="border border-red-500/20 bg-red-500/5 px-3 py-2 font-mono text-[11px] text-red-300">
+            {visibleError}
+          </div>
         ) : null}
       </CardContent>
     </Card>
