@@ -20,29 +20,62 @@ export function VideoTile({ src, poster, ariaLabel, overlay, className, playStyl
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
+    setProgress(0)
+  }, [src])
+
+  useEffect(() => {
     const video = videoRef.current
     if (!video) return
-    const onTime = () => {
-      if (!video.duration) return
-      setProgress((video.currentTime / video.duration) * 100)
+
+    let rafId = 0
+
+    const syncProgress = () => {
+      if (!video.duration || !Number.isFinite(video.duration)) return
+      setProgress(Math.min(100, Math.max(0, (video.currentTime / video.duration) * 100)))
     }
-    const onPlay = () => setIsPlaying(true)
-    const onPause = () => setIsPlaying(false)
+
+    const tick = () => {
+      if (video.paused) return
+      syncProgress()
+      rafId = requestAnimationFrame(tick)
+    }
+
+    const onPlay = () => {
+      setIsPlaying(true)
+      cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(tick)
+    }
+
+    const onPause = () => {
+      setIsPlaying(false)
+      cancelAnimationFrame(rafId)
+      syncProgress()
+    }
+
+    const onSeeked = () => syncProgress()
+
     const onEnded = () => {
       setIsPlaying(false)
+      cancelAnimationFrame(rafId)
       setProgress(100)
     }
-    video.addEventListener('timeupdate', onTime)
+
     video.addEventListener('play', onPlay)
     video.addEventListener('pause', onPause)
+    video.addEventListener('seeked', onSeeked)
+    video.addEventListener('timeupdate', syncProgress)
     video.addEventListener('ended', onEnded)
+    video.addEventListener('loadedmetadata', onSeeked)
     return () => {
-      video.removeEventListener('timeupdate', onTime)
+      cancelAnimationFrame(rafId)
       video.removeEventListener('play', onPlay)
       video.removeEventListener('pause', onPause)
+      video.removeEventListener('seeked', onSeeked)
+      video.removeEventListener('timeupdate', syncProgress)
       video.removeEventListener('ended', onEnded)
+      video.removeEventListener('loadedmetadata', onSeeked)
     }
-  }, [])
+  }, [src])
 
   function togglePlay() {
     const video = videoRef.current
@@ -69,6 +102,7 @@ export function VideoTile({ src, poster, ariaLabel, overlay, className, playStyl
     const rect = event.currentTarget.getBoundingClientRect()
     const ratio = (event.clientX - rect.left) / rect.width
     video.currentTime = video.duration * Math.max(0, Math.min(1, ratio))
+    setProgress(ratio * 100)
   }
 
   const subtle = playStyle === 'subtle'
@@ -150,7 +184,7 @@ export function VideoTile({ src, poster, ariaLabel, overlay, className, playStyl
 
       <div
         onClick={handleScrub}
-        className="relative h-1 cursor-pointer bg-white/[0.06]"
+        className="relative h-[3px] cursor-pointer bg-white/[0.06]"
         role="slider"
         aria-label="Seek"
         aria-valuenow={Math.round(progress)}
@@ -159,7 +193,7 @@ export function VideoTile({ src, poster, ariaLabel, overlay, className, playStyl
         tabIndex={-1}
       >
         <div
-          className="absolute inset-y-0 left-0 bg-zinc-500/50 transition-[width] duration-150"
+          className="absolute inset-y-0 left-0 bg-zinc-500/50"
           style={{ width: `${progress}%` }}
         />
       </div>

@@ -29,15 +29,20 @@ class Settings(BaseSettings):
         ]
     )
     scene_detector: str = "adaptive"
+    # ContentDetector: frame-delta score; higher = fewer cuts (used when scene_detector=content).
     scene_threshold: float = 27.0
-    adaptive_threshold: float = 4.0
-    min_scene_len_frames: int = 15
-    min_content_val: float = 15.0
-    adaptive_window_width: int = 6
+    # AdaptiveDetector: ratio threshold; lower = more cuts (more sensitive). Default in lib ~3.0.
+    adaptive_threshold: float = 2.5
+    # Frames: min run after a cut before another can register (PySceneDetect min_scene_len).
+    min_scene_len_frames: int = 8
+    # Minimum content score to count as a new scene; lower = more sensitive (frame-based score).
+    min_content_val: float = 10.0
+    # Frames on each side used for local mean; smaller = reacts faster to short shot changes (lib default 2).
+    adaptive_window_width: int = 3
     adaptive_luma_only: bool = False
-    # Merge segments shorter than this (frames) into neighbors to drop duplicate cuts
-    # that leave a thin slice of the next shot between two detections.
-    merge_short_scene_frames: int = 12
+    # Merge only very short runs (frames) into a neighbor to drop spurious double-cuts.
+    # Keep low so real short shots are not collapsed; set SPLITTER_MERGE_SHORT_SCENE_FRAMES=0 to disable.
+    merge_short_scene_frames: int = 5
     # PySceneDetect decode backend ("opencv", "pyav", ...). Passed to scenedetect.open_video.
     scenedetect_backend: str = "opencv"
 

@@ -177,6 +177,7 @@ def format_seconds(seconds: float) -> str:
 
 
 def build_segments(video_path: Path, duration_seconds: float, frame_rate: float, total_frames: int) -> list[SegmentBoundary]:
+    """Run PySceneDetect and return cuts in **frames** (seconds on segments are derived for display/ffmpeg)."""
     settings = get_settings()
     if settings.scene_detector == "content":
         detector = ContentDetector(
