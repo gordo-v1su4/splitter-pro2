@@ -1,14 +1,41 @@
-# Traefik on the VPS should route Host(`splitter.serving.cloud`) → this service (e.g. http://<host>:8000).
-# Open 8000 to Traefik only (or use a Docker network shared with Traefik + labels—see your Traefik stack).
+# Traefik discovers this service via Docker labels (same pattern as ffmpeg-gateway).
+#
+# Before `docker compose up`:
+#   1. PUBLIC_HOST — hostname with DNS pointing at this VPS (default below).
+#   2. TRAEFIK_NETWORK — name of the external Docker network Traefik attaches to (see `docker network ls`).
+#
+# Example on the server (.env next to this file):
+#   PUBLIC_HOST=splitter.serving.cloud
+#   TRAEFIK_NETWORK=traefik_default   # or proxy, traefik_traefik, etc.
+
 services:
   splitter-pro2:
     build: .
+    expose:
+      - "8000"
     ports:
+      # Optional host access / debugging; Traefik reaches the container on the traefik network.
       - "8000:8000"
     environment:
       SPLITTER_ALLOWED_ORIGINS: '["https://splitter.serving.cloud","http://splitter.serving.cloud","http://localhost:8000","http://127.0.0.1:8000","http://localhost:5173","http://127.0.0.1:5173"]'
     volumes:
       - splitter_data:/app/data
+    networks:
+      - splitter-internal
+      - traefik-edge
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.splitter-pro2.rule=Host(`${PUBLIC_HOST:-splitter.serving.cloud}`)"
+      - "traefik.http.routers.splitter-pro2.entrypoints=websecure"
+      - "traefik.http.routers.splitter-pro2.tls.certresolver=letsencrypt"
+      - "traefik.http.services.splitter-pro2.loadbalancer.server.port=8000"
+
+networks:
+  splitter-internal:
+    driver: bridge
+  traefik-edge:
+    external: true
+    name: ${TRAEFIK_NETWORK:-traefik}
 
 volumes:
   splitter_data:
