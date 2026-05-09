@@ -2,11 +2,27 @@ services:
   splitter-pro2:
     build: .
     ports:
+      # Optional: raw API without TLS (debug / legacy). Main entry is Caddy on 80/443.
       - "8000:8000"
     environment:
-      SPLITTER_ALLOWED_ORIGINS: '["http://localhost:8000","http://127.0.0.1:8000"]'
+      SPLITTER_ALLOWED_ORIGINS: '["https://splitter.serving.cloud","http://splitter.serving.cloud","http://localhost:8000","http://127.0.0.1:8000","http://localhost:5173","http://127.0.0.1:5173"]'
     volumes:
       - splitter_data:/app/data
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - splitter-pro2
+
 volumes:
   splitter_data:
+  caddy_data:
+  caddy_config:

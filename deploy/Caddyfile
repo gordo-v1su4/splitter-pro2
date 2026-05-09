@@ -1,0 +1,6 @@
+# Public HTTPS for Splitter Pro (FastAPI + SPA from same origin).
+# Prerequisite: DNS A/AAAA record splitter.serving.cloud → this host’s public IP.
+splitter.serving.cloud {
+	encode gzip
+	reverse_proxy splitter-pro2:8000
+}
