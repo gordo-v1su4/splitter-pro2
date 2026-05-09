@@ -1,3 +1,6 @@
+.env
+.env.*
+!.env.example
 .venv/
 backend/.venv/
 backend/.pytest_cache/
@@ -7,4 +10,5 @@ frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 data/jobs/
+data/image_splits/
 *.pyc

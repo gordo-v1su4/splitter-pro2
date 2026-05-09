@@ -1,0 +1,12 @@
+services:
+  splitter-pro2:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      SPLITTER_ALLOWED_ORIGINS: '["http://localhost:8000","http://127.0.0.1:8000"]'
+    volumes:
+      - splitter_data:/app/data
+
+volumes:
+  splitter_data:

@@ -55,8 +55,18 @@ export interface JobState {
 
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as { detail?: string } | null
-    throw new Error(payload?.detail ?? `Request failed with status ${response.status}`)
+    const raw = await response.json().catch(() => null) as
+      | { detail?: string | Array<{ msg?: string }> }
+      | null
+    let message = `Request failed with status ${response.status}`
+    if (raw?.detail != null) {
+      if (typeof raw.detail === 'string') {
+        message = raw.detail
+      } else if (Array.isArray(raw.detail)) {
+        message = 'Invalid request (check form fields).'
+      }
+    }
+    throw new Error(message)
   }
   return (await response.json()) as T
 }
@@ -85,4 +95,152 @@ export async function fetchJobResult(jobId: string): Promise<JobManifest> {
 
 export function assetUrl(jobId: string, assetPath: string): string {
   return `/api/jobs/${jobId}/assets/${assetPath}`
+}
+
+export type ImageSplitMode = 'fixed' | 'auto'
+
+export interface ImageSplitPanelMeta {
+  index: number
+  label: string
+  asset_path: string
+}
+
+export interface ImageSplitManifest {
+  split_id: string
+  source_filename: string
+  width: number
+  height: number
+  mode: ImageSplitMode
+  rows: number
+  cols: number
+  gutter_px: number
+  panels: ImageSplitPanelMeta[]
+}
+
+export interface ImageSplitBatchPanelMeta extends ImageSplitPanelMeta {
+  source_index: number
+  source_filename: string
+}
+
+export interface ImageSplitBatchManifest {
+  batch_id: string
+  mode: ImageSplitMode
+  rows: number | null
+  cols: number | null
+  gutter_px: number
+  sensitivity: number | null
+  source_filenames: string[]
+  total_sources: number
+  panels: ImageSplitBatchPanelMeta[]
+}
+
+export async function splitImageFixedGrid(
+  file: File,
+  rows: number,
+  cols: number,
+  gutterPx: number,
+): Promise<ImageSplitManifest> {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('rows', String(rows))
+  formData.append('cols', String(cols))
+  formData.append('gutter_px', String(gutterPx))
+
+  const response = await fetch('/api/image-split/fixed-grid', {
+    method: 'POST',
+    body: formData,
+  })
+
+  const payload = await parseResponse<{ manifest: ImageSplitManifest }>(response)
+  return payload.manifest
+}
+
+export async function splitImageAuto(file: File, gutterPx: number, sensitivity: number): Promise<ImageSplitManifest> {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('gutter_px', String(gutterPx))
+  formData.append('sensitivity', String(sensitivity))
+
+  const response = await fetch('/api/image-split/auto', {
+    method: 'POST',
+    body: formData,
+  })
+
+  const payload = await parseResponse<{ manifest: ImageSplitManifest }>(response)
+  return payload.manifest
+}
+
+export async function splitImageBatchFixedGrid(
+  files: File[],
+  rows: number,
+  cols: number,
+  gutterPx: number,
+): Promise<ImageSplitBatchManifest> {
+  const formData = new FormData()
+  for (const file of files) {
+    formData.append('files', file)
+  }
+  formData.append('rows', String(rows))
+  formData.append('cols', String(cols))
+  formData.append('gutter_px', String(gutterPx))
+
+  const response = await fetch('/api/image-split/batch/fixed-grid', {
+    method: 'POST',
+    body: formData,
+  })
+
+  const payload = await parseResponse<{ manifest: ImageSplitBatchManifest }>(response)
+  return payload.manifest
+}
+
+export async function splitImageBatchAuto(
+  files: File[],
+  gutterPx: number,
+  sensitivity: number,
+): Promise<ImageSplitBatchManifest> {
+  const formData = new FormData()
+  for (const file of files) {
+    formData.append('files', file)
+  }
+  formData.append('gutter_px', String(gutterPx))
+  formData.append('sensitivity', String(sensitivity))
+
+  const response = await fetch('/api/image-split/batch/auto', {
+    method: 'POST',
+    body: formData,
+  })
+
+  const payload = await parseResponse<{ manifest: ImageSplitBatchManifest }>(response)
+  return payload.manifest
+}
+
+export function imageSplitPanelAssetUrl(splitId: string, assetPath: string): string {
+  const safe = assetPath
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/')
+  return `/api/image-split/${splitId}/panels/${safe}`
+}
+
+export function imageSplitZipUrl(splitId: string): string {
+  return `/api/image-split/${splitId}/export.zip`
+}
+
+export async function recordGoogleSheetsUrl(url: string): Promise<boolean> {
+  const trimmed = url.trim()
+  if (!trimmed) {
+    return false
+  }
+
+  const body = new FormData()
+  body.append('sheets_url', trimmed)
+  const response = await fetch('/api/integrations/google-sheets', { method: 'POST', body })
+
+  if (!response.ok) {
+    return false
+  }
+
+  const payload = (await response.json()) as { recorded?: boolean }
+  return payload.recorded === true
 }

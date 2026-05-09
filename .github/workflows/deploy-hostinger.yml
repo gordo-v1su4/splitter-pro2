@@ -1,0 +1,50 @@
+# Deploy Splitter Pro 2 to Hostinger on every push to main.
+# Same flow as discord-bot: SSH → git pull → docker compose up -d --build
+#
+# GitHub repo secrets (Settings → Secrets and variables → Actions):
+#   HOSTINGER_SSH_KEY     — private key for SSH (required)
+#   HOSTINGER_HOST        — VPS hostname or IP (required)
+#   HOSTINGER_USER        — SSH user, e.g. root (required)
+# Optional:
+#   HOSTINGER_APP_PATH    — clone directory on server (default: /root/splitter-pro2)
+#
+# Server one-time setup: clone this repo to APP_PATH, add .env at repo root, then push to main.
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            APP_PATH="${{ secrets.HOSTINGER_APP_PATH }}"
+            [ -z "$APP_PATH" ] && APP_PATH="/root/splitter-pro2"
+            if [ ! -d "$APP_PATH" ]; then
+              echo "App path $APP_PATH not found. Clone the repo there first and add .env."
+              exit 1
+            fi
+
+            cd "$APP_PATH"
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
+
+            if [ ! -f .env ]; then
+              echo "Missing $APP_PATH/.env on server."
+              exit 1
+            fi
+
+            docker compose up -d --build
+            docker compose ps
+            docker image prune -f

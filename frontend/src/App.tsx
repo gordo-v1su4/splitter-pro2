@@ -1,13 +1,17 @@
 import { startTransition, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Film } from 'lucide-react'
 
-import { assetUrl, fetchJob, fetchJobResult, type JobManifest, type JobState, submitVideo } from './lib/api'
-import { formatDuration } from './lib/utils'
-import { UploadPanel } from './components/upload-panel'
+import { ImageSplitWorkspace } from './components/image-split-workspace'
 import { JobStatusPanel } from './components/job-status-panel'
 import { SegmentCard } from './components/segment-card'
+import { UploadPanel } from './components/upload-panel'
+import { assetUrl, fetchJob, fetchJobResult, type JobManifest, type JobState, submitVideo } from './lib/api'
+import { formatDuration } from './lib/utils'
+
+type WorkspaceTab = 'video' | 'image'
 
 function App() {
+  const [workspace, setWorkspace] = useState<WorkspaceTab>('video')
   const [job, setJob] = useState<JobState | null>(null)
   const [manifest, setManifest] = useState<JobManifest | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -119,33 +123,39 @@ function App() {
       />
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-6 lg:px-10">
-        <TopNav />
+        <TopNav activeTab={workspace} onSelectTab={setWorkspace} />
 
-        {hasActiveWork ? <HeroCompact /> : <HeroFull />}
+        {workspace === 'image' ? (
+          <ImageSplitWorkspace />
+        ) : (
+          <>
+            {hasActiveWork ? <HeroCompact /> : <HeroFull />}
 
-        <section className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-          <UploadPanel
-            isUploading={isUploading}
-            onUpload={handleUpload}
-            job={job}
-            onReset={resetJob}
-          />
-          <JobStatusPanel job={job} error={error} manifest={manifest} />
-        </section>
+            <section className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+              <UploadPanel
+                isUploading={isUploading}
+                onUpload={handleUpload}
+                job={job}
+                onReset={resetJob}
+              />
+              <JobStatusPanel job={job} error={error} manifest={manifest} />
+            </section>
 
-        {manifest ? (
-          <section className="mt-8 space-y-5">
-            <StoryboardHeader manifest={manifest} onReset={resetJob} />
+            {manifest ? (
+              <section className="mt-8 space-y-5">
+                <StoryboardHeader manifest={manifest} onReset={resetJob} />
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {manifest.segments.map((segment) => (
-                <SegmentCard key={segment.index} jobId={manifest.job_id} segment={segment} />
-              ))}
-            </div>
-          </section>
-        ) : !hasActiveWork ? (
-          <EmptyStoryboard />
-        ) : null}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {manifest.segments.map((segment) => (
+                    <SegmentCard key={segment.index} jobId={manifest.job_id} segment={segment} />
+                  ))}
+                </div>
+              </section>
+            ) : !hasActiveWork ? (
+              <EmptyStoryboard />
+            ) : null}
+          </>
+        )}
 
         <Footer />
       </div>
@@ -153,9 +163,23 @@ function App() {
   )
 }
 
-function TopNav() {
+function TopNav({
+  activeTab,
+  onSelectTab,
+}: {
+  activeTab: WorkspaceTab
+  onSelectTab: (tab: WorkspaceTab) => void
+}) {
+  const tabClassName = (tab: WorkspaceTab) =>
+    [
+      'rounded-sm px-3 py-1 font-mono text-[10px] uppercase tracking-[0.24em] transition',
+      activeTab === tab
+        ? 'border border-[color:var(--color-accent-line)] bg-[color:var(--color-accent-soft)] text-zinc-50'
+        : 'border border-transparent text-zinc-500 hover:text-zinc-200',
+    ].join(' ')
+
   return (
-    <nav className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+    <nav className="flex flex-col gap-4 border-b border-white/[0.06] pb-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
         <div className="relative flex h-7 w-7 items-center justify-center">
           <div className="absolute inset-0 rounded-sm border border-white/[0.12]" />
@@ -166,15 +190,17 @@ function TopNav() {
           <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">Pro&nbsp;02</span>
         </div>
       </div>
-      <div className="hidden items-center gap-7 font-mono text-[11px] uppercase tracking-[0.22em] text-zinc-500 sm:flex">
-        <a className="transition-colors hover:text-zinc-200" href="#">Local</a>
-        <a className="transition-colors hover:text-zinc-200" href="https://github.com" target="_blank" rel="noreferrer">
-          Source
+      <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.24em]">
+        <button type="button" className={tabClassName('video')} onClick={() => onSelectTab('video')}>
+          Video
+        </button>
+        <button type="button" className={tabClassName('image')} onClick={() => onSelectTab('image')}>
+          Image grids
+        </button>
+        <span className="hidden text-zinc-700 sm:inline">/</span>
+        <a className="text-zinc-500 transition-colors hover:text-zinc-200" href="/docs" rel="noreferrer">
+          Swagger docs
         </a>
-        <span className="flex items-center gap-2">
-          <span className="dot-pulse h-1.5 w-1.5 rounded-full bg-[color:var(--color-accent)]" />
-          <span className="text-zinc-400">v0.1</span>
-        </span>
       </div>
     </nav>
   )

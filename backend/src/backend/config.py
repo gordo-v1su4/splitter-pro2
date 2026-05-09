@@ -13,12 +13,14 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="SPLITTER_",
-        env_file=".env",
+        env_file=REPO_ROOT / ".env",
+        env_file_encoding="utf-8",
         extra="ignore",
     )
 
     app_name: str = "Splitter Pro 2"
     data_dir: Path = Field(default_factory=lambda: REPO_ROOT / "data" / "jobs")
+    image_splits_dir: Path = Field(default_factory=lambda: REPO_ROOT / "data" / "image_splits")
     frontend_dist_dir: Path = Field(default_factory=lambda: REPO_ROOT / "frontend" / "dist")
     allowed_origins: list[str] = Field(
         default_factory=lambda: [
@@ -51,4 +53,5 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     settings = Settings()
     settings.data_dir.mkdir(parents=True, exist_ok=True)
+    settings.image_splits_dir.mkdir(parents=True, exist_ok=True)
     return settings

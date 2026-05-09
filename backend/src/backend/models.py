@@ -76,3 +76,62 @@ class JobResultResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str = Field(..., examples=["Job is still processing."])
+
+
+class ImageSplitPanel(BaseModel):
+    index: int
+    label: str
+    asset_path: str
+
+
+class ImageSplitMode(StrEnum):
+    FIXED = "fixed"
+    AUTO = "auto"
+
+
+class ImageSplitManifest(BaseModel):
+    split_id: str
+    source_filename: str
+    width: int
+    height: int
+    mode: ImageSplitMode
+    rows: int
+    cols: int
+    gutter_px: int
+    panels: list[ImageSplitPanel]
+
+
+class ImageSplitResponse(BaseModel):
+    manifest: ImageSplitManifest
+
+
+class ImageSplitBatchPanel(BaseModel):
+    index: int
+    label: str
+    asset_path: str
+    source_index: int
+    source_filename: str
+
+
+class ImageSplitBatchManifest(BaseModel):
+    batch_id: str
+    mode: ImageSplitMode
+    rows: int | None = None
+    cols: int | None = None
+    gutter_px: int
+    sensitivity: float | None = None
+    source_filenames: list[str]
+    total_sources: int
+    panels: list[ImageSplitBatchPanel]
+
+
+class ImageSplitBatchResponse(BaseModel):
+    manifest: ImageSplitBatchManifest
+
+
+class SheetsStubResponse(BaseModel):
+    recorded: bool
+    sheets_url_digest: str | None = Field(
+        default=None,
+        description="Short SHA-256 prefix of the submitted URL (URL is not persisted).",
+    )
