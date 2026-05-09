@@ -1,12 +1,6 @@
-# Traefik discovers this service via Docker labels (Docker socket on the host).
-#
-# Your Traefik stack uses network_mode: host, so it never joins a Docker bridge
-# network with this container. Traefik must route to the published host port (8000).
-# Add to Traefik command (required for host-mode + container backends):
-#   --providers.docker.useBindPortIP=true
-#
-# Optional .env next to this file:
-#   PUBLIC_HOST=splitter.serving.cloud
+# Traefik (separate stack, often network_mode: host) discovers this service via Docker labels.
+# Published port 8000 → Traefik must use: --providers.docker.useBindPortIP=true
+# Override hostname: set PUBLIC_HOST in .env next to this file (Compose variable substitution).
 
 services:
   splitter-pro2:

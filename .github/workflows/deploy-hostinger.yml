@@ -1,19 +1,21 @@
-# Deploy Splitter Pro 2 to Hostinger on every push to main.
-# Same flow as discord-bot: SSH → git pull → docker compose up -d --build
+# Automated deploy: every push to main (and manual "Run workflow") SSHs to Hostinger and
+# runs git pull + docker compose. You do not run deploy commands locally for routine updates.
 #
-# GitHub repo secrets (Settings → Secrets and variables → Actions):
-#   HOSTINGER_SSH_KEY     — private key for SSH (required)
-#   HOSTINGER_HOST        — VPS hostname or IP (required)
-#   HOSTINGER_USER        — SSH user, e.g. root (required)
-# Optional:
-#   HOSTINGER_APP_PATH    — clone directory on server (default: /root/splitter-pro2)
+# GitHub → Settings → Secrets and variables → Actions:
+#   HOSTINGER_SSH_KEY (required)
+#   HOSTINGER_HOST     (required)
+#   HOSTINGER_USER     (required)
+#   HOSTINGER_APP_PATH (optional, default /root/splitter-pro2)
 #
-# Server one-time setup: clone this repo to APP_PATH, add .env at repo root, then push to main.
+# One-time on the VPS only: clone this repo to APP_PATH and add a root .env (see .gitignore).
+# Traefik runs separately (e.g. Hostinger Docker project); use host network + Docker labels on
+# this compose. Traefik command should include: --providers.docker.useBindPortIP=true
 name: Deploy to Hostinger
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -31,7 +33,7 @@ jobs:
             APP_PATH="${{ secrets.HOSTINGER_APP_PATH }}"
             [ -z "$APP_PATH" ] && APP_PATH="/root/splitter-pro2"
             if [ ! -d "$APP_PATH" ]; then
-              echo "App path $APP_PATH not found. Clone the repo there first and add .env."
+              echo "App path $APP_PATH not found. One-time: clone this repo to that path on the VPS."
               exit 1
             fi
 
@@ -41,10 +43,11 @@ jobs:
             git pull --ff-only origin main
 
             if [ ! -f .env ]; then
-              echo "Missing $APP_PATH/.env on server."
+              echo "Missing $APP_PATH/.env on server (required for first deploy check)."
               exit 1
             fi
 
+            docker compose down --remove-orphans
             docker compose up -d --build
             docker compose ps
             docker image prune -f
