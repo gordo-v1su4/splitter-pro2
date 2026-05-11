@@ -348,7 +348,7 @@ export function ImageSplitWorkspace() {
                 <div className="relative overflow-hidden rounded-sm border border-white/[0.04] bg-black">
                   <img
                     alt={panel.label}
-                    className="aspect-square w-full object-cover"
+                    className="h-auto w-full max-w-full"
                     src={imageSplitPanelAssetUrl(manifest.batch_id, panel.asset_path)}
                   />
                   <Button
