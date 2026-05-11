@@ -22,6 +22,21 @@ const inputLikeProcessChrome =
 const API_CONNECTION_HINT =
   'The browser lost the connection to the API while splitting (this is not something you fix by “deploying” the frontend—local use still needs the FastAPI process running). For dev: run uvicorn on http://127.0.0.1:8000 and `bun run dev` so Vite can proxy /api. Common causes: backend not running, wrong port, very large uploads, or the worker crashing mid-request—try a tiny test PNG and check the uvicorn terminal for errors.'
 
+/** Square row/column count so each tile keeps the plate’s aspect (e.g. 16:9 → 2×2 panels stay 16:9). */
+function suggestSquareGridFromImageSize(width: number, height: number): { rows: number; cols: number } {
+  const ratio = width / height
+  const tol = 0.04
+  const r169 = 16 / 9
+  const r916 = 9 / 16
+  if (Math.abs(ratio - 1) < tol) {
+    return { rows: 3, cols: 3 }
+  }
+  if (Math.abs(ratio - r169) < tol || Math.abs(ratio - r916) < tol) {
+    return { rows: 2, cols: 2 }
+  }
+  return { rows: 2, cols: 2 }
+}
+
 function looksLikeNetworkDisconnect(cause: unknown): boolean {
   if (!(cause instanceof Error)) {
     return false
@@ -51,8 +66,8 @@ export function ImageSplitWorkspace() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const [splitMode, setSplitMode] = useState<SplitModeUi>('fixed')
-  const [rows, setRows] = useState(3)
-  const [cols, setCols] = useState(3)
+  const [rows, setRows] = useState(2)
+  const [cols, setCols] = useState(2)
   const [gutterPx, setGutterPx] = useState(0)
   const [sensitivity, setSensitivity] = useState(0.55)
   const [sheetsUrl, setSheetsUrl] = useState('')
@@ -70,6 +85,32 @@ export function ImageSplitWorkspace() {
     const objectUrl = URL.createObjectURL(first)
     setPreviewUrl(objectUrl)
     return () => URL.revokeObjectURL(objectUrl)
+  }, [imageFiles])
+
+  useEffect(() => {
+    const first = imageFiles[0]
+    if (!first) {
+      return undefined
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const bitmap = await createImageBitmap(first)
+        if (cancelled) {
+          bitmap.close()
+          return
+        }
+        const { rows: nextRows, cols: nextCols } = suggestSquareGridFromImageSize(bitmap.width, bitmap.height)
+        bitmap.close()
+        setRows(nextRows)
+        setCols(nextCols)
+      } catch {
+        /* decode failed — keep current grid */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [imageFiles])
 
   const panelCountLabel = useMemo(() => {
@@ -216,6 +257,9 @@ export function ImageSplitWorkspace() {
             <div className="space-y-3 border-t border-white/[0.05] pt-4">
               {splitMode === 'fixed' ? (
                 <div className="grid grid-cols-2 gap-4">
+                  <p className="col-span-2 text-[11px] leading-relaxed text-zinc-500">
+                    Same rows and cols keep each panel matching the plate aspect (16×9 plates default to 2×2).
+                  </p>
                   <label className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
                     Rows
                     <input
