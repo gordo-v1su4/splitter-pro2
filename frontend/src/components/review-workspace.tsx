@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 
 import {
+  approveReviewImage,
   createReview,
   fetchReview,
   listReviews,
+  publishApprovedReviewImages,
+  rejectReviewImage,
   reviewAssetUrl,
   type ReviewManifest,
   type ReviewSummary,
@@ -18,6 +21,7 @@ export function ReviewWorkspace() {
   const [reviews, setReviews] = useState<ReviewSummary[]>([])
   const [activeReview, setActiveReview] = useState<ReviewManifest | null>(null)
   const [isPublishing, setIsPublishing] = useState(false)
+  const [reviewActionKey, setReviewActionKey] = useState<string | null>(null)
   const [loadingReviewId, setLoadingReviewId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -66,6 +70,41 @@ export function ReviewWorkspace() {
     } finally {
       setLoadingReviewId(null)
     }
+  }
+
+
+  async function runReviewAction(actionKey: string, action: () => Promise<ReviewManifest>, fallbackMessage: string) {
+    setReviewActionKey(actionKey)
+    setError(null)
+    try {
+      const review = await action()
+      setActiveReview(review)
+      setReviews((current) => upsertReviewSummary(current, review))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : fallbackMessage)
+    } finally {
+      setReviewActionKey(null)
+    }
+  }
+
+  function approveImage(reviewId: string, imageIndex: number) {
+    void runReviewAction(
+      `approve-${imageIndex}`,
+      () => approveReviewImage(reviewId, imageIndex),
+      'Unable to approve image.',
+    )
+  }
+
+  function rejectImage(reviewId: string, imageIndex: number) {
+    void runReviewAction(
+      `reject-${imageIndex}`,
+      () => rejectReviewImage(reviewId, imageIndex),
+      'Unable to reject image.',
+    )
+  }
+
+  function publishApproved(reviewId: string) {
+    void runReviewAction('publish-approved', () => publishApprovedReviewImages(reviewId), 'Unable to publish approved images.')
   }
 
   return (
@@ -136,7 +175,17 @@ export function ReviewWorkspace() {
         </CardContent>
       </Card>
 
-      {activeReview ? <ReviewGallery review={activeReview} /> : <ReviewPrimer />}
+      {activeReview ? (
+        <ReviewGallery
+          review={activeReview}
+          actionKey={reviewActionKey}
+          onApprove={approveImage}
+          onReject={rejectImage}
+          onPublishApproved={publishApproved}
+        />
+      ) : (
+        <ReviewPrimer />
+      )}
 
       <ReviewHistory reviews={reviews} loadingReviewId={loadingReviewId} onOpenReview={openReview} />
     </section>
@@ -159,7 +208,21 @@ function upsertReviewSummary(current: ReviewSummary[], review: ReviewManifest): 
   ]
 }
 
-function ReviewGallery({ review }: { review: ReviewManifest }) {
+function ReviewGallery({
+  review,
+  actionKey,
+  onApprove,
+  onReject,
+  onPublishApproved,
+}: {
+  review: ReviewManifest
+  actionKey: string | null
+  onApprove: (reviewId: string, imageIndex: number) => void
+  onReject: (reviewId: string, imageIndex: number) => void
+  onPublishApproved: (reviewId: string) => void
+}) {
+  const approvedCount = review.images.filter((image) => image.approval_status === 'approved').length
+
   return (
     <article className="space-y-4">
       <div className="flex flex-col justify-between gap-3 border-b border-white/[0.06] pb-4 sm:flex-row sm:items-end">
@@ -168,25 +231,63 @@ function ReviewGallery({ review }: { review: ReviewManifest }) {
           <h2 className="mt-2 font-display text-3xl italic text-zinc-50">{review.title || 'Untitled image review'}</h2>
           {review.notes ? <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">{review.notes}</p> : null}
         </div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">
-          {review.image_count} review frames · /api/reviews/{review.review_id}
-        </p>
+        <div className="space-y-2 sm:text-right">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">
+            {review.image_count} review frames · /api/reviews/{review.review_id}
+          </p>
+          <Button
+            type="button"
+            onClick={() => onPublishApproved(review.review_id)}
+            disabled={approvedCount === 0 || actionKey === 'publish-approved'}
+            className="w-full sm:w-auto"
+          >
+            {actionKey === 'publish-approved' ? 'Publishing approved…' : `Publish approved (${approvedCount})`}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {review.images.map((image) => (
-          <figure key={image.asset_path} className="overflow-hidden rounded-sm border border-white/[0.08] bg-white/[0.025]">
-            <img
-              src={image.public_url || reviewAssetUrl(review.review_id, image.asset_path)}
-              alt={image.label}
-              className="aspect-video w-full bg-black object-contain"
-            />
-            <figcaption className="flex items-center justify-between gap-3 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-              <span className="truncate">{image.label}</span>
-              <span>{image.width}×{image.height}</span>
-            </figcaption>
-          </figure>
-        ))}
+        {review.images.map((image) => {
+          const status = image.approval_status ?? 'pending'
+          return (
+            <figure key={image.asset_path} className="overflow-hidden rounded-sm border border-white/[0.08] bg-white/[0.025]">
+              <img
+                src={image.public_url || reviewAssetUrl(review.review_id, image.asset_path)}
+                alt={image.label}
+                className="aspect-video w-full bg-black object-contain"
+              />
+              <figcaption className="space-y-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="truncate">{image.label}</span>
+                  <span>{image.width}×{image.height}</span>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className={status === 'published' ? 'text-emerald-300' : status === 'rejected' ? 'text-red-300' : status === 'approved' ? 'text-[color:var(--color-accent)]' : 'text-zinc-500'}>
+                    {status}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onApprove(review.review_id, image.index)}
+                      disabled={status === 'published' || actionKey === `approve-${image.index}`}
+                      className="text-[color:var(--color-accent)] disabled:text-zinc-700"
+                    >
+                      {actionKey === `approve-${image.index}` ? 'Approving…' : 'Approve'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onReject(review.review_id, image.index)}
+                      disabled={status === 'published' || actionKey === `reject-${image.index}`}
+                      className="text-red-300 disabled:text-zinc-700"
+                    >
+                      {actionKey === `reject-${image.index}` ? 'Rejecting…' : 'Reject'}
+                    </button>
+                  </div>
+                </div>
+              </figcaption>
+            </figure>
+          )
+        })}
       </div>
     </article>
   )

@@ -148,12 +148,56 @@ describe('App', () => {
                   asset_path: 'images/a.png',
                   width: 1280,
                   height: 720,
-                  storage_bucket: 'splitter',
-                  object_key: 'reviews/review-1/images/a.png',
-                  public_url: 'https://s3.v1su4.dev/splitter/reviews/review-1/images/a.png',
-                  media_url: 'https://media.v1su4.dev/files/splitter/reviews/review-1/images/a.png',
+                  approval_status: 'pending',
                 },
-                { index: 2, label: 'b.png', asset_path: 'images/b.png', width: 1280, height: 720 },
+                { index: 2, label: 'b.png', asset_path: 'images/b.png', width: 1280, height: 720, approval_status: 'pending' },
+              ],
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            review: {
+              review_id: 'review-1',
+              title: 'Smoke pass',
+              notes: 'Pick one.',
+              image_count: 2,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              images: [
+                { index: 1, label: 'a.png', asset_path: 'images/a.png', width: 1280, height: 720, approval_status: 'approved' },
+                { index: 2, label: 'b.png', asset_path: 'images/b.png', width: 1280, height: 720, approval_status: 'pending' },
+              ],
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            review: {
+              review_id: 'review-1',
+              title: 'Smoke pass',
+              notes: 'Pick one.',
+              image_count: 2,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              images: [
+                {
+                  index: 1,
+                  label: 'a.png',
+                  asset_path: 'images/a.png',
+                  width: 1280,
+                  height: 720,
+                  approval_status: 'published',
+                  storage_bucket: 'splitter',
+                  object_key: 'reviews/review-1/approved/a.png',
+                  public_url: 'https://s3.v1su4.dev/splitter/reviews/review-1/approved/a.png',
+                  media_url: 'https://media.v1su4.dev/files/splitter/reviews/review-1/approved/a.png',
+                },
+                { index: 2, label: 'b.png', asset_path: 'images/b.png', width: 1280, height: 720, approval_status: 'pending' },
               ],
             },
           }),
@@ -179,10 +223,17 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getAllByText(/Smoke pass/i).length).toBeGreaterThan(0)
     })
-    expect(screen.getByRole('img', { name: /a.png/i })).toHaveAttribute(
-      'src',
-      'https://s3.v1su4.dev/splitter/reviews/review-1/images/a.png',
-    )
+    expect(screen.getAllByText(/pending/i).length).toBeGreaterThan(0)
+    await user.click(screen.getAllByRole('button', { name: /^approve$/i })[0])
+    expect(await screen.findByText(/^approved$/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /publish approved/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('img', { name: /a.png/i })).toHaveAttribute(
+        'src',
+        'https://s3.v1su4.dev/splitter/reviews/review-1/approved/a.png',
+      )
+    })
     expect(screen.getByRole('img', { name: /Yesterday good takes cover/i })).toHaveAttribute(
       'src',
       'https://s3.v1su4.dev/splitter/reviews/old-review/images/cover.png',
@@ -191,6 +242,8 @@ describe('App', () => {
     expect(screen.getAllByText(/2 images/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/Yesterday good takes/i)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('/api/reviews', expect.objectContaining({ method: 'POST' }))
+    expect(fetchMock).toHaveBeenCalledWith('/api/reviews/review-1/images/1/approve', expect.objectContaining({ method: 'POST' }))
+    expect(fetchMock).toHaveBeenCalledWith('/api/reviews/review-1/publish-approved', expect.objectContaining({ method: 'POST' }))
   })
 
 })

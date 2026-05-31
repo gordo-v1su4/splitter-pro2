@@ -233,6 +233,7 @@ export interface ReviewImageMeta {
   asset_path: string
   width: number
   height: number
+  approval_status?: 'pending' | 'approved' | 'rejected' | 'published'
   storage_bucket?: string | null
   object_key?: string | null
   public_url?: string | null
@@ -285,6 +286,24 @@ export async function createReview(files: File[], title: string, notes: string):
     body: formData,
   })
 
+  const payload = await parseResponse<{ review: ReviewManifest }>(response)
+  return payload.review
+}
+
+export async function approveReviewImage(reviewId: string, imageIndex: number): Promise<ReviewManifest> {
+  const response = await fetch(`/api/reviews/${reviewId}/images/${imageIndex}/approve`, { method: 'POST' })
+  const payload = await parseResponse<{ review: ReviewManifest }>(response)
+  return payload.review
+}
+
+export async function rejectReviewImage(reviewId: string, imageIndex: number): Promise<ReviewManifest> {
+  const response = await fetch(`/api/reviews/${reviewId}/images/${imageIndex}/reject`, { method: 'POST' })
+  const payload = await parseResponse<{ review: ReviewManifest }>(response)
+  return payload.review
+}
+
+export async function publishApprovedReviewImages(reviewId: string): Promise<ReviewManifest> {
+  const response = await fetch(`/api/reviews/${reviewId}/publish-approved`, { method: 'POST' })
   const payload = await parseResponse<{ review: ReviewManifest }>(response)
   return payload.review
 }

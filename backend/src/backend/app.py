@@ -281,6 +281,36 @@ def create_app() -> FastAPI:
     def get_review_endpoint(review_id: str) -> ReviewResponse:
         return ReviewResponse(review=reviews.get_review(review_id))
 
+    @app.post(
+        "/api/reviews/{review_id}/images/{image_index}/approve",
+        response_model=ReviewResponse,
+        responses={404: {"model": ErrorResponse}},
+        tags=["Reviews"],
+        summary="Approve one review image for publishing",
+    )
+    def approve_review_image_endpoint(review_id: str, image_index: int) -> ReviewResponse:
+        return ReviewResponse(review=reviews.set_review_image_approval(review_id, image_index, "approved"))
+
+    @app.post(
+        "/api/reviews/{review_id}/images/{image_index}/reject",
+        response_model=ReviewResponse,
+        responses={404: {"model": ErrorResponse}},
+        tags=["Reviews"],
+        summary="Reject one review image so it will not be published",
+    )
+    def reject_review_image_endpoint(review_id: str, image_index: int) -> ReviewResponse:
+        return ReviewResponse(review=reviews.set_review_image_approval(review_id, image_index, "rejected"))
+
+    @app.post(
+        "/api/reviews/{review_id}/publish-approved",
+        response_model=ReviewResponse,
+        responses={404: {"model": ErrorResponse}, 502: {"model": ErrorResponse}},
+        tags=["Reviews"],
+        summary="Publish approved review images to RustFS-backed storage",
+    )
+    def publish_approved_review_images_endpoint(review_id: str) -> ReviewResponse:
+        return ReviewResponse(review=reviews.publish_approved_review_images(review_id))
+
     @app.get(
         "/api/reviews/{review_id}/assets/{asset_path:path}",
         response_model=None,
