@@ -153,6 +153,7 @@ function upsertReviewSummary(current: ReviewSummary[], review: ReviewManifest): 
       created_at: review.created_at,
       updated_at: review.updated_at,
       cover_asset_path: review.images[0]?.asset_path ?? null,
+      cover_public_url: review.images[0]?.public_url ?? null,
     },
     ...current.filter((item) => item.review_id !== review.review_id),
   ]
@@ -176,7 +177,7 @@ function ReviewGallery({ review }: { review: ReviewManifest }) {
         {review.images.map((image) => (
           <figure key={image.asset_path} className="overflow-hidden rounded-sm border border-white/[0.08] bg-white/[0.025]">
             <img
-              src={reviewAssetUrl(review.review_id, image.asset_path)}
+              src={image.public_url || reviewAssetUrl(review.review_id, image.asset_path)}
               alt={image.label}
               className="aspect-video w-full bg-black object-contain"
             />
@@ -228,7 +229,7 @@ function ReviewHistory({
               <div className="bg-black/40">
                 {review.cover_asset_path ? (
                   <img
-                    src={reviewAssetUrl(review.review_id, review.cover_asset_path)}
+                    src={review.cover_public_url || reviewAssetUrl(review.review_id, review.cover_asset_path)}
                     alt={`${review.title} cover`}
                     className="h-full min-h-24 w-full object-cover"
                   />

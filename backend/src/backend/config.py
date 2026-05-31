@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     image_splits_dir: Path = Field(default_factory=lambda: REPO_ROOT / "data" / "image_splits")
     reviews_dir: Path = Field(default_factory=lambda: REPO_ROOT / "data" / "reviews")
     frontend_dist_dir: Path = Field(default_factory=lambda: REPO_ROOT / "frontend" / "dist")
+    media_api_url: str | None = None
+    media_api_token: str | None = None
+    review_storage_bucket: str = "splitter"
+    review_storage_prefix: str = "reviews"
     allowed_origins: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:5173",

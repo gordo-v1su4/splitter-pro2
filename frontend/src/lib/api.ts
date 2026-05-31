@@ -233,6 +233,10 @@ export interface ReviewImageMeta {
   asset_path: string
   width: number
   height: number
+  storage_bucket?: string | null
+  object_key?: string | null
+  public_url?: string | null
+  media_url?: string | null
 }
 
 export interface ReviewManifest {
@@ -253,6 +257,7 @@ export interface ReviewSummary {
   created_at: string
   updated_at: string
   cover_asset_path: string | null
+  cover_public_url?: string | null
 }
 
 export async function listReviews(): Promise<ReviewSummary[]> {

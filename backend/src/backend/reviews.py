@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+import httpx
 from fastapi import HTTPException, UploadFile
 from PIL import Image, ImageOps
 
@@ -71,6 +72,45 @@ def _write_manifest(workspace: Path, manifest: ReviewManifest) -> None:
     _manifest_path(workspace).write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
 
 
+def _storage_folder(review_id: str) -> str:
+    settings = get_settings()
+    prefix = "/".join(part.strip("/") for part in settings.review_storage_prefix.split("/") if part.strip("/"))
+    return f"{prefix}/{review_id}/images" if prefix else f"{review_id}/images"
+
+
+def upload_to_review_storage(*, image_path: Path, filename: str, content_type: str, review_id: str) -> dict[str, str] | None:
+    """Upload a review image to RustFS via the media API when configured.
+
+    Object keys are rooted inside the configured bucket. For the default
+    splitter bucket that means reviews/<review_id>/images/<uploaded-file> —
+    never splitter/reviews/... because splitter is already the bucket name.
+    """
+    settings = get_settings()
+    if not settings.media_api_url or not settings.media_api_token:
+        return None
+
+    url = settings.media_api_url.rstrip("/") + "/upload"
+    bucket = settings.review_storage_bucket.strip() or "splitter"
+    folder = _storage_folder(review_id)
+    with image_path.open("rb") as image_file:
+        response = httpx.post(
+            url,
+            headers={"Authorization": f"Bearer {settings.media_api_token}"},
+            data={"userId": "splitter", "bucket": bucket, "folder": folder},
+            files={"file": (filename, image_file, content_type)},
+            timeout=60.0,
+        )
+    if response.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"Review storage upload failed: {response.text[:200]}")
+    payload = response.json()
+    return {
+        "bucket": payload.get("bucket") or bucket,
+        "object_key": payload.get("objectKey") or payload.get("path") or "",
+        "public_url": payload.get("publicUrl") or "",
+        "media_url": payload.get("mediaUrl") or "",
+    }
+
+
 def _load_manifest(workspace: Path) -> ReviewManifest:
     raw = json.loads(_manifest_path(workspace).read_text(encoding="utf-8"))
     return ReviewManifest.model_validate(raw)
@@ -98,6 +138,18 @@ def create_review(title: str, notes: str, uploads: list[UploadFile]) -> ReviewMa
         target = images_dir / filename
         save_format = "JPEG" if target.suffix.lower() in {".jpg", ".jpeg"} else target.suffix.lower().lstrip(".").upper()
         image.save(target, format=save_format)
+        content_type = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".webp": "image/webp",
+        }[target.suffix.lower()]
+        remote_asset = upload_to_review_storage(
+            image_path=target,
+            filename=filename,
+            content_type=content_type,
+            review_id=review_id,
+        )
         images.append(
             ReviewImage(
                 index=index,
@@ -105,6 +157,10 @@ def create_review(title: str, notes: str, uploads: list[UploadFile]) -> ReviewMa
                 asset_path=f"images/{filename}",
                 width=image.width,
                 height=image.height,
+                storage_bucket=remote_asset.get("bucket") if remote_asset else None,
+                object_key=remote_asset.get("object_key") if remote_asset else None,
+                public_url=remote_asset.get("public_url") if remote_asset else None,
+                media_url=remote_asset.get("media_url") if remote_asset else None,
             )
         )
 
@@ -143,6 +199,7 @@ def list_reviews() -> list[ReviewSummary]:
                 created_at=manifest.created_at,
                 updated_at=manifest.updated_at,
                 cover_asset_path=manifest.images[0].asset_path if manifest.images else None,
+                cover_public_url=manifest.images[0].public_url if manifest.images else None,
             )
         )
     return summaries

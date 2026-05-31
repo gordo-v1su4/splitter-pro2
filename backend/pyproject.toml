@@ -8,6 +8,7 @@ dependencies = [
     "numpy>=2.1.0",
     "pillow>=12.1.1",
     "pydantic-settings>=2.13.1",
+    "httpx>=0.28.1",
     "python-multipart>=0.0.22",
     "scenedetect[opencv-headless]<0.7",
     "uvicorn[standard]>=0.42.0",

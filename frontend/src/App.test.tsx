@@ -125,6 +125,7 @@ describe('App', () => {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 cover_asset_path: 'images/cover.png',
+                cover_public_url: 'https://s3.v1su4.dev/splitter/reviews/old-review/images/cover.png',
               },
             ],
           }),
@@ -141,7 +142,17 @@ describe('App', () => {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
               images: [
-                { index: 1, label: 'a.png', asset_path: 'images/a.png', width: 1280, height: 720 },
+                {
+                  index: 1,
+                  label: 'a.png',
+                  asset_path: 'images/a.png',
+                  width: 1280,
+                  height: 720,
+                  storage_bucket: 'splitter',
+                  object_key: 'reviews/review-1/images/a.png',
+                  public_url: 'https://s3.v1su4.dev/splitter/reviews/review-1/images/a.png',
+                  media_url: 'https://media.v1su4.dev/files/splitter/reviews/review-1/images/a.png',
+                },
                 { index: 2, label: 'b.png', asset_path: 'images/b.png', width: 1280, height: 720 },
               ],
             },
@@ -168,7 +179,14 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getAllByText(/Smoke pass/i).length).toBeGreaterThan(0)
     })
-    expect(screen.getByRole('img', { name: /a.png/i })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /a.png/i })).toHaveAttribute(
+      'src',
+      'https://s3.v1su4.dev/splitter/reviews/review-1/images/a.png',
+    )
+    expect(screen.getByRole('img', { name: /Yesterday good takes cover/i })).toHaveAttribute(
+      'src',
+      'https://s3.v1su4.dev/splitter/reviews/old-review/images/cover.png',
+    )
     expect(screen.getAllByText(/Pick one\./i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/2 images/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/Yesterday good takes/i)).toBeInTheDocument()

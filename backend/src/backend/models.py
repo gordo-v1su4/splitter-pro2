@@ -135,6 +135,10 @@ class ReviewImage(BaseModel):
     asset_path: str
     width: int
     height: int
+    storage_bucket: str | None = None
+    object_key: str | None = None
+    public_url: str | None = None
+    media_url: str | None = None
 
 
 class ReviewManifest(BaseModel):
@@ -155,6 +159,7 @@ class ReviewSummary(BaseModel):
     created_at: datetime
     updated_at: datetime
     cover_asset_path: str | None = None
+    cover_public_url: str | None = None
 
 
 class ReviewResponse(BaseModel):
