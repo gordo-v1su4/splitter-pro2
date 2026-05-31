@@ -1,6 +1,7 @@
 # Traefik (separate stack, often network_mode: host) discovers this service via Docker labels.
 # Published port 8000 → Traefik must use: --providers.docker.useBindPortIP=true
-# Override hostname: set PUBLIC_HOST in .env next to this file (Compose variable substitution).
+# Override host rule: set PUBLIC_HOST_RULE in .env next to this file (Compose variable substitution).
+# Default exposes both splitter.serving.cloud and serving.cloud/www.serving.cloud.
 
 services:
   splitter-pro2:
@@ -8,12 +9,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      SPLITTER_ALLOWED_ORIGINS: '["https://splitter.serving.cloud","http://splitter.serving.cloud","http://localhost:8000","http://127.0.0.1:8000","http://localhost:5173","http://127.0.0.1:5173"]'
+      SPLITTER_ALLOWED_ORIGINS: '["https://splitter.serving.cloud","http://splitter.serving.cloud","https://serving.cloud","http://serving.cloud","https://www.serving.cloud","http://www.serving.cloud","http://localhost:8000","http://127.0.0.1:8000","http://localhost:5173","http://127.0.0.1:5173"]'
     volumes:
       - splitter_data:/app/data
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.splitter-pro2.rule=Host(`${PUBLIC_HOST:-splitter.serving.cloud}`)"
+      - "traefik.http.routers.splitter-pro2.rule=${PUBLIC_HOST_RULE:-Host(`splitter.serving.cloud`) || Host(`serving.cloud`) || Host(`www.serving.cloud`)}"
       - "traefik.http.routers.splitter-pro2.entrypoints=websecure"
       - "traefik.http.routers.splitter-pro2.tls.certresolver=letsencrypt"
       - "traefik.http.services.splitter-pro2.loadbalancer.server.port=8000"
