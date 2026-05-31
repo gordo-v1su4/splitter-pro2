@@ -162,6 +162,10 @@ class ReviewSummary(BaseModel):
     updated_at: datetime
     cover_asset_path: str | None = None
     cover_public_url: str | None = None
+    pending_count: int = 0
+    approved_count: int = 0
+    rejected_count: int = 0
+    published_count: int = 0
 
 
 class ReviewResponse(BaseModel):

@@ -260,6 +260,10 @@ export interface ReviewSummary {
   updated_at: string
   cover_asset_path: string | null
   cover_public_url?: string | null
+  pending_count?: number
+  approved_count?: number
+  rejected_count?: number
+  published_count?: number
 }
 
 export async function listReviews(): Promise<ReviewSummary[]> {

@@ -126,6 +126,10 @@ describe('App', () => {
                 updated_at: new Date().toISOString(),
                 cover_asset_path: 'images/cover.png',
                 cover_public_url: 'https://s3.v1su4.dev/splitter/reviews/old-review/images/cover.png',
+                pending_count: 0,
+                approved_count: 0,
+                rejected_count: 0,
+                published_count: 4,
               },
             ],
           }),
@@ -211,7 +215,9 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /image review/i })).toBeInTheDocument()
     expect(screen.getByText(/publish generated images and why they matter/i)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /history/i })).toBeInTheDocument()
-    expect(await screen.findByText(/Yesterday good takes/i)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getAllByText(/Yesterday good takes/i).length).toBeGreaterThan(0)
+    })
 
     await user.type(screen.getByLabelText(/title/i), 'Smoke pass')
     await user.upload(screen.getByLabelText(/images/i), [
@@ -237,13 +243,13 @@ describe('App', () => {
         'https://s3.v1su4.dev/splitter/reviews/review-1/approved/a.png',
       )
     })
-    expect(screen.getByRole('img', { name: /Yesterday good takes cover/i })).toHaveAttribute(
+    expect(screen.getByRole('img', { name: /Yesterday good takes thumbnail/i })).toHaveAttribute(
       'src',
       'https://s3.v1su4.dev/splitter/reviews/old-review/images/cover.png',
     )
     expect(screen.getAllByText(/Pick one\./i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/2 images/i).length).toBeGreaterThan(0)
-    expect(screen.getByText(/Yesterday good takes/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/Yesterday good takes/i).length).toBeGreaterThan(0)
     expect(fetchMock).toHaveBeenCalledWith('/api/reviews', expect.objectContaining({ method: 'POST' }))
     expect(fetchMock).toHaveBeenCalledWith('/api/reviews/review-1/images/1/approve', expect.objectContaining({ method: 'POST' }))
     expect(fetchMock).toHaveBeenCalledWith('/api/reviews/review-1/publish-approved', expect.objectContaining({ method: 'POST' }))
@@ -264,6 +270,10 @@ describe('App', () => {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 cover_asset_path: 'images/grid.png',
+                pending_count: 1,
+                approved_count: 0,
+                rejected_count: 0,
+                published_count: 0,
               },
             ],
           }),
@@ -323,10 +333,10 @@ describe('App', () => {
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /reviews/i }))
-    await user.click(await screen.findByRole('button', { name: /open gen-x vampire 3x3 grids/i }))
-    await user.click(await screen.findByRole('button', { name: /view grid\.png/i }))
+    const pendingButtons = await screen.findAllByRole('button', { name: /gen-x vampire 3x3 grids/i })
+    await user.click(pendingButtons[0])
 
-    expect(screen.getByRole('dialog', { name: /grid\.png/i })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: /grid\.png/i })).toBeInTheDocument()
     expect(screen.getByRole('img', { name: /grid\.png large preview/i })).toHaveClass('max-h-[78vh]')
 
     await user.type(screen.getByLabelText(/optional rejection reason/i), 'too vertical and hard to read')

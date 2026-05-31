@@ -426,6 +426,9 @@ def list_reviews() -> list[ReviewSummary]:
     summaries: list[ReviewSummary] = []
     for manifest_file in sorted(root.glob("*/review.json"), key=lambda path: path.stat().st_mtime, reverse=True):
         manifest = _load_manifest(manifest_file.parent)
+        status_counts = {"pending": 0, "approved": 0, "rejected": 0, "published": 0}
+        for image in manifest.images:
+            status_counts[image.approval_status or "pending"] = status_counts.get(image.approval_status or "pending", 0) + 1
         summaries.append(
             ReviewSummary(
                 review_id=manifest.review_id,
@@ -436,6 +439,10 @@ def list_reviews() -> list[ReviewSummary]:
                 updated_at=manifest.updated_at,
                 cover_asset_path=manifest.images[0].asset_path if manifest.images else None,
                 cover_public_url=manifest.images[0].public_url if manifest.images else None,
+                pending_count=status_counts["pending"],
+                approved_count=status_counts["approved"],
+                rejected_count=status_counts["rejected"],
+                published_count=status_counts["published"],
             )
         )
     return summaries

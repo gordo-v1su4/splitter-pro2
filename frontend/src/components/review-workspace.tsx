@@ -23,6 +23,7 @@ export function ReviewWorkspace() {
   const [isPublishing, setIsPublishing] = useState(false)
   const [reviewActionKey, setReviewActionKey] = useState<string | null>(null)
   const [loadingReviewId, setLoadingReviewId] = useState<string | null>(null)
+  const [autoInspectToken, setAutoInspectToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -60,11 +61,15 @@ export function ReviewWorkspace() {
     }
   }
 
-  async function openReview(reviewId: string) {
+  async function openReview(reviewId: string, inspectFirstPending = false) {
     setLoadingReviewId(reviewId)
     setError(null)
     try {
-      setActiveReview(await fetchReview(reviewId))
+      const review = await fetchReview(reviewId)
+      setActiveReview(review)
+      if (inspectFirstPending) {
+        setAutoInspectToken(`${reviewId}-${Date.now()}`)
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to load review.')
     } finally {
@@ -175,24 +180,30 @@ export function ReviewWorkspace() {
         </CardContent>
       </Card>
 
+      <PendingReviewQueue
+        reviews={reviews}
+        loadingReviewId={loadingReviewId}
+        onOpenReview={(reviewId) => void openReview(reviewId, true)}
+      />
+
       {activeReview ? (
         <ReviewGallery
           review={activeReview}
           actionKey={reviewActionKey}
+          autoInspectToken={autoInspectToken}
           onApprove={approveImage}
           onReject={rejectImage}
           onPublishApproved={publishApproved}
         />
-      ) : (
-        <ReviewPrimer />
-      )}
+      ) : null}
 
-      <ReviewHistory reviews={reviews} loadingReviewId={loadingReviewId} onOpenReview={openReview} />
+      <ReviewHistory reviews={reviews} loadingReviewId={loadingReviewId} onOpenReview={(reviewId) => void openReview(reviewId)} />
     </section>
   )
 }
 
 function upsertReviewSummary(current: ReviewSummary[], review: ReviewManifest): ReviewSummary[] {
+  const statusCounts = summarizeReviewStatuses(review)
   return [
     {
       review_id: review.review_id,
@@ -203,9 +214,24 @@ function upsertReviewSummary(current: ReviewSummary[], review: ReviewManifest): 
       updated_at: review.updated_at,
       cover_asset_path: review.images[0]?.asset_path ?? null,
       cover_public_url: review.images[0]?.public_url ?? null,
+      ...statusCounts,
     },
     ...current.filter((item) => item.review_id !== review.review_id),
   ]
+}
+
+function summarizeReviewStatuses(review: ReviewManifest) {
+  return review.images.reduce(
+    (counts, image) => {
+      const status = image.approval_status ?? 'pending'
+      if (status === 'pending') counts.pending_count += 1
+      if (status === 'approved') counts.approved_count += 1
+      if (status === 'rejected') counts.rejected_count += 1
+      if (status === 'published') counts.published_count += 1
+      return counts
+    },
+    { pending_count: 0, approved_count: 0, rejected_count: 0, published_count: 0 },
+  )
 }
 
 function ReviewGallery({
@@ -214,9 +240,11 @@ function ReviewGallery({
   onApprove,
   onReject,
   onPublishApproved,
+  autoInspectToken,
 }: {
   review: ReviewManifest
   actionKey: string | null
+  autoInspectToken: string | null
   onApprove: (reviewId: string, imageIndex: number) => void
   onReject: (reviewId: string, imageIndex: number, reason?: string) => void
   onPublishApproved: (reviewId: string) => void
@@ -225,6 +253,15 @@ function ReviewGallery({
   const [rejectReason, setRejectReason] = useState('')
   const approvedCount = review.images.filter((image) => image.approval_status === 'approved').length
   const selectedImage = review.images.find((image) => image.index === selectedIndex) ?? null
+
+  useEffect(() => {
+    if (!autoInspectToken) return
+    const firstPending = review.images.find((image) => (image.approval_status ?? 'pending') === 'pending') ?? review.images[0]
+    if (firstPending) {
+      openImage(firstPending.index)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoInspectToken])
 
   function openImage(imageIndex: number) {
     setSelectedIndex(imageIndex)
@@ -383,15 +420,55 @@ function ReviewGallery({
   )
 }
 
-function ReviewPrimer() {
+function PendingReviewQueue({
+  reviews,
+  loadingReviewId,
+  onOpenReview,
+}: {
+  reviews: ReviewSummary[]
+  loadingReviewId: string | null
+  onOpenReview: (reviewId: string) => void
+}) {
+  const pendingReviews = reviews.filter((review) => (review.pending_count ?? review.image_count) > 0)
+
   return (
-    <div className="border border-dashed border-white/[0.08] p-5">
-      <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-600">Review mode</p>
-      <h2 className="mt-2 font-display text-2xl italic text-zinc-50">Publish frames. Record the reason.</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-        Use this as the quick image-good board for generated frames, contact sheets, keyframes, and visual-storyline candidates.
-      </p>
-    </div>
+    <section className="space-y-3 border border-[color:var(--color-accent-line)]/60 bg-[color:var(--color-accent-soft)]/20 p-4">
+      <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[color:var(--color-accent)]">Needs review</p>
+          <h2 className="mt-1 font-display text-2xl italic text-zinc-50">Pending review queue</h2>
+          <p className="mt-1 text-sm text-zinc-400">Click a thumbnail once to open the full image inspector, then approve or deny.</p>
+        </div>
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">{pendingReviews.length} pending set{pendingReviews.length === 1 ? '' : 's'}</p>
+      </div>
+
+      {pendingReviews.length === 0 ? (
+        <p className="rounded-sm border border-white/[0.08] bg-black/20 p-3 text-sm text-zinc-500">No pending image reviews right now.</p>
+      ) : (
+        <div className="grid gap-2">
+          {pendingReviews.map((review) => (
+            <button
+              key={review.review_id}
+              type="button"
+              onClick={() => onOpenReview(review.review_id)}
+              className="group grid w-full grid-cols-[88px_1fr] items-stretch overflow-hidden rounded-md border border-white/[0.08] bg-black/25 text-left transition hover:border-[color:var(--color-accent-line)] hover:bg-white/[0.04] sm:grid-cols-[128px_1fr_auto]"
+            >
+              <ReviewCover review={review} className="aspect-video h-full min-h-16 w-full object-cover" />
+              <span className="flex min-w-0 flex-col justify-center p-3">
+                <span className="truncate text-sm font-medium text-zinc-100">{review.title || 'Untitled image review'}</span>
+                {review.notes ? <span className="mt-1 line-clamp-1 text-xs text-zinc-500">{review.notes}</span> : null}
+                <span className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+                  {(review.pending_count ?? review.image_count)} pending · click thumbnail to inspect
+                </span>
+              </span>
+              <span className="hidden items-center px-4 text-xs font-medium text-[color:var(--color-accent)] sm:flex">
+                {loadingReviewId === review.review_id ? 'Loading…' : 'Review now'}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -407,48 +484,58 @@ function ReviewHistory({
   return (
     <section className="space-y-3 border-t border-white/[0.06] pt-5">
       <div className="flex items-baseline justify-between gap-4">
-        <h2 className="font-display text-2xl italic text-zinc-50">History</h2>
+        <div>
+          <h2 className="font-display text-2xl italic text-zinc-50">History log</h2>
+          <p className="mt-1 text-sm text-zinc-500">Older reviews and finished/published sets live here.</p>
+        </div>
         <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">Newest first</p>
       </div>
 
       {reviews.length === 0 ? (
         <p className="text-sm text-zinc-500">No image reviews published yet.</p>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="divide-y divide-white/[0.06] overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.02]">
           {reviews.map((review) => (
-            <article key={review.review_id} className="grid grid-cols-[96px_1fr] overflow-hidden rounded-sm border border-white/[0.08] bg-white/[0.025]">
-              <div className="bg-black/40">
-                {review.cover_asset_path ? (
-                  <img
-                    src={review.cover_public_url || reviewAssetUrl(review.review_id, review.cover_asset_path)}
-                    alt={`${review.title} cover`}
-                    className="h-full min-h-24 w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full min-h-24 items-center justify-center font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-700">
-                    No image
-                  </div>
-                )}
-              </div>
-              <div className="flex min-w-0 flex-col justify-between gap-3 p-3">
-                <div className="min-w-0">
-                  <h3 className="truncate text-sm font-medium text-zinc-100">{review.title || 'Untitled image review'}</h3>
-                  {review.notes ? <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-500">{review.notes}</p> : null}
-                  <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-600">{review.image_count} images</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onOpenReview(review.review_id)}
-                  aria-label={`Open ${review.title || 'Untitled image review'}`}
-                  className="self-start rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-[color:var(--color-accent-line)] hover:bg-[color:var(--color-accent-soft)]"
-                >
-                  {loadingReviewId === review.review_id ? 'Loading…' : 'Open'}
-                </button>
-              </div>
-            </article>
+            <button
+              key={review.review_id}
+              type="button"
+              onClick={() => onOpenReview(review.review_id)}
+              aria-label={`View ${review.title || 'Untitled image review'}`}
+              className="grid w-full grid-cols-[72px_1fr_auto] items-center gap-3 p-2 text-left transition hover:bg-white/[0.04]"
+            >
+              <ReviewCover review={review} className="aspect-video w-full rounded-sm object-cover" />
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-medium text-zinc-100">{review.title || 'Untitled image review'}</span>
+                {review.notes ? <span className="mt-0.5 block truncate text-xs text-zinc-500">{review.notes}</span> : null}
+                <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+                  {review.image_count} image{review.image_count === 1 ? '' : 's'} · {review.pending_count ?? 0} pending · {review.published_count ?? 0} published
+                </span>
+              </span>
+              <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-zinc-200">
+                {loadingReviewId === review.review_id ? 'Loading…' : 'View'}
+              </span>
+            </button>
           ))}
         </div>
       )}
     </section>
+  )
+}
+
+function ReviewCover({ review, className }: { review: ReviewSummary; className: string }) {
+  if (!review.cover_asset_path) {
+    return (
+      <span className={`${className} flex items-center justify-center bg-black/40 font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-700`}>
+        No image
+      </span>
+    )
+  }
+
+  return (
+    <img
+      src={review.cover_public_url || reviewAssetUrl(review.review_id, review.cover_asset_path)}
+      alt={`${review.title} thumbnail`}
+      className={className}
+    />
   )
 }
