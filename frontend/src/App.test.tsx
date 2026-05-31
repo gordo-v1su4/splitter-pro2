@@ -224,12 +224,15 @@ describe('App', () => {
       expect(screen.getAllByText(/Smoke pass/i).length).toBeGreaterThan(0)
     })
     expect(screen.getAllByText(/pending/i).length).toBeGreaterThan(0)
-    await user.click(screen.getAllByRole('button', { name: /^approve$/i })[0])
-    expect(await screen.findByText(/^approved$/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /view a\.png/i }))
+    await user.click(screen.getByRole('button', { name: /approve image/i }))
+    await waitFor(() => {
+      expect(screen.getAllByText(/^approved$/i).length).toBeGreaterThan(0)
+    })
     await user.click(screen.getByRole('button', { name: /publish approved/i }))
 
     await waitFor(() => {
-      expect(screen.getByRole('img', { name: /a.png/i })).toHaveAttribute(
+      expect(screen.getAllByRole('img', { name: /^a\.png$/i })[0]).toHaveAttribute(
         'src',
         'https://s3.v1su4.dev/splitter/reviews/review-1/approved/a.png',
       )
@@ -244,6 +247,102 @@ describe('App', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/reviews', expect.objectContaining({ method: 'POST' }))
     expect(fetchMock).toHaveBeenCalledWith('/api/reviews/review-1/images/1/approve', expect.objectContaining({ method: 'POST' }))
     expect(fetchMock).toHaveBeenCalledWith('/api/reviews/review-1/publish-approved', expect.objectContaining({ method: 'POST' }))
+  })
+
+
+  it('opens review images in a large modal with approve and optional reject reason', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            reviews: [
+              {
+                review_id: 'review-visual',
+                title: 'Gen-X Vampire 3x3 Grids',
+                notes: 'Approve one.',
+                image_count: 1,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                cover_asset_path: 'images/grid.png',
+              },
+            ],
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            review: {
+              review_id: 'review-visual',
+              title: 'Gen-X Vampire 3x3 Grids',
+              notes: 'Approve one.',
+              image_count: 1,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              images: [
+                {
+                  index: 1,
+                  label: 'grid.png',
+                  asset_path: 'images/grid.png',
+                  width: 2752,
+                  height: 1536,
+                  approval_status: 'pending',
+                },
+              ],
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            review: {
+              review_id: 'review-visual',
+              title: 'Gen-X Vampire 3x3 Grids',
+              notes: 'Approve one.',
+              image_count: 1,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              images: [
+                {
+                  index: 1,
+                  label: 'grid.png',
+                  asset_path: 'images/grid.png',
+                  width: 2752,
+                  height: 1536,
+                  approval_status: 'rejected',
+                  rejection_reason: 'too vertical and hard to read',
+                },
+              ],
+            },
+          }),
+        ),
+      )
+
+    render(<App />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /reviews/i }))
+    await user.click(await screen.findByRole('button', { name: /open gen-x vampire 3x3 grids/i }))
+    await user.click(await screen.findByRole('button', { name: /view grid\.png/i }))
+
+    expect(screen.getByRole('dialog', { name: /grid\.png/i })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /grid\.png large preview/i })).toHaveClass('max-h-[78vh]')
+
+    await user.type(screen.getByLabelText(/optional rejection reason/i), 'too vertical and hard to read')
+    await user.click(screen.getByRole('button', { name: /deny image/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/reviews/review-visual/images/1/reject',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+    const rejectRequest = fetchMock.mock.calls.find(([url]) => url === '/api/reviews/review-visual/images/1/reject')
+    expect(JSON.parse(rejectRequest?.[1]?.body as string)).toEqual({ reason: 'too vertical and hard to read' })
+    await waitFor(() => {
+      expect(screen.getAllByText(/too vertical and hard to read/i).length).toBeGreaterThan(0)
+    })
   })
 
 })

@@ -366,7 +366,7 @@ def get_review(review_id: str) -> ReviewManifest:
     return _load_manifest(workspace)
 
 
-def set_review_image_approval(review_id: str, image_index: int, approval_status: str) -> ReviewManifest:
+def set_review_image_approval(review_id: str, image_index: int, approval_status: str, rejection_reason: str | None = None) -> ReviewManifest:
     if approval_status not in {"approved", "rejected"}:
         raise HTTPException(status_code=400, detail="Unsupported review image approval status.")
     workspace = review_workspace(sanitize_review_id(review_id))
@@ -377,6 +377,10 @@ def set_review_image_approval(review_id: str, image_index: int, approval_status:
     for image in manifest.images:
         if image.index == image_index:
             image.approval_status = approval_status
+            if approval_status == "rejected":
+                image.rejection_reason = rejection_reason.strip() if rejection_reason and rejection_reason.strip() else None
+            elif approval_status == "approved":
+                image.rejection_reason = None
             manifest.updated_at = datetime.now(timezone.utc)
             _write_manifest(workspace, manifest)
             return manifest

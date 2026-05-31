@@ -95,10 +95,10 @@ export function ReviewWorkspace() {
     )
   }
 
-  function rejectImage(reviewId: string, imageIndex: number) {
+  function rejectImage(reviewId: string, imageIndex: number, reason = '') {
     void runReviewAction(
       `reject-${imageIndex}`,
-      () => rejectReviewImage(reviewId, imageIndex),
+      () => rejectReviewImage(reviewId, imageIndex, reason),
       'Unable to reject image.',
     )
   }
@@ -218,10 +218,24 @@ function ReviewGallery({
   review: ReviewManifest
   actionKey: string | null
   onApprove: (reviewId: string, imageIndex: number) => void
-  onReject: (reviewId: string, imageIndex: number) => void
+  onReject: (reviewId: string, imageIndex: number, reason?: string) => void
   onPublishApproved: (reviewId: string) => void
 }) {
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
   const approvedCount = review.images.filter((image) => image.approval_status === 'approved').length
+  const selectedImage = review.images.find((image) => image.index === selectedIndex) ?? null
+
+  function openImage(imageIndex: number) {
+    setSelectedIndex(imageIndex)
+    const image = review.images.find((candidate) => candidate.index === imageIndex)
+    setRejectReason(image?.rejection_reason ?? '')
+  }
+
+  function closeImage() {
+    setSelectedIndex(null)
+    setRejectReason('')
+  }
 
   return (
     <article className="space-y-4">
@@ -233,7 +247,7 @@ function ReviewGallery({
         </div>
         <div className="space-y-2 sm:text-right">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">
-            {review.image_count} review frames · /api/reviews/{review.review_id}
+            {review.image_count} review frame{review.image_count === 1 ? '' : 's'} · approve before storage
           </p>
           <Button
             type="button"
@@ -246,49 +260,125 @@ function ReviewGallery({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {review.images.map((image) => {
           const status = image.approval_status ?? 'pending'
+          const imageUrl = image.public_url || reviewAssetUrl(review.review_id, image.asset_path)
           return (
-            <figure key={image.asset_path} className="overflow-hidden rounded-sm border border-white/[0.08] bg-white/[0.025]">
-              <img
-                src={image.public_url || reviewAssetUrl(review.review_id, image.asset_path)}
-                alt={image.label}
-                className="aspect-video w-full bg-black object-contain"
-              />
-              <figcaption className="space-y-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="truncate">{image.label}</span>
-                  <span>{image.width}×{image.height}</span>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className={status === 'published' ? 'text-emerald-300' : status === 'rejected' ? 'text-red-300' : status === 'approved' ? 'text-[color:var(--color-accent)]' : 'text-zinc-500'}>
-                    {status}
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onApprove(review.review_id, image.index)}
-                      disabled={status === 'published' || actionKey === `approve-${image.index}`}
-                      className="text-[color:var(--color-accent)] disabled:text-zinc-700"
-                    >
-                      {actionKey === `approve-${image.index}` ? 'Approving…' : 'Approve'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onReject(review.review_id, image.index)}
-                      disabled={status === 'published' || actionKey === `reject-${image.index}`}
-                      className="text-red-300 disabled:text-zinc-700"
-                    >
-                      {actionKey === `reject-${image.index}` ? 'Rejecting…' : 'Reject'}
-                    </button>
+            <figure
+              key={image.asset_path}
+              className="group overflow-hidden rounded-md border border-white/[0.08] bg-zinc-950 shadow-[0_18px_60px_rgba(0,0,0,0.24)]"
+            >
+              <button
+                type="button"
+                onClick={() => openImage(image.index)}
+                aria-label={`View ${image.label}`}
+                className="relative block w-full overflow-hidden bg-black text-left"
+              >
+                <img
+                  src={imageUrl}
+                  alt={image.label}
+                  className="aspect-video w-full bg-black object-contain transition duration-300 group-hover:scale-[1.02]"
+                />
+                <div className="pointer-events-none absolute inset-0 flex items-end bg-gradient-to-t from-black/85 via-black/10 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                  <div className="w-full p-3">
+                    <div className="flex items-center justify-between gap-3 text-xs text-zinc-100">
+                      <span className="truncate font-medium">{image.label}</span>
+                      <span className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-zinc-200">
+                        {status}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-zinc-400">{image.width}×{image.height} · click to inspect</p>
                   </div>
                 </div>
+              </button>
+              <figcaption className="flex items-center justify-between gap-3 px-3 py-2 text-xs text-zinc-400">
+                <span className={status === 'published' ? 'text-emerald-300' : status === 'rejected' ? 'text-red-300' : status === 'approved' ? 'text-[color:var(--color-accent)]' : 'text-zinc-500'}>
+                  {status}
+                </span>
+                <Button type="button" variant="secondary" size="sm" onClick={() => openImage(image.index)}>
+                  Inspect
+                </Button>
               </figcaption>
+              {image.rejection_reason ? <p className="px-3 pb-3 text-xs leading-5 text-red-200/80">{image.rejection_reason}</p> : null}
             </figure>
           )
         })}
       </div>
+
+      {selectedImage ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={selectedImage.label}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closeImage()
+            }
+          }}
+        >
+          <div className="w-full max-w-7xl overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 shadow-2xl">
+            <div className="flex flex-col gap-3 border-b border-white/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">Image inspection</p>
+                <h3 className="mt-1 text-lg font-medium text-zinc-50">{selectedImage.label}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={closeImage}
+                className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-200 transition hover:bg-white/[0.08]"
+              >
+                Close
+              </button>
+            </div>
+            <div className="grid gap-4 p-4 lg:grid-cols-[1fr_320px]">
+              <div className="flex min-h-[42vh] items-center justify-center rounded-lg bg-black/60 p-2">
+                <img
+                  src={selectedImage.public_url || reviewAssetUrl(review.review_id, selectedImage.asset_path)}
+                  alt={`${selectedImage.label} large preview`}
+                  className="max-h-[78vh] w-auto max-w-full object-contain"
+                />
+              </div>
+              <aside className="space-y-4 rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                <div className="space-y-1 text-sm text-zinc-400">
+                  <p className="text-zinc-100">{selectedImage.width}×{selectedImage.height}</p>
+                  <p>Status: {selectedImage.approval_status ?? 'pending'}</p>
+                </div>
+                <label className="block space-y-2">
+                  <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Optional rejection reason</span>
+                  <textarea
+                    value={rejectReason}
+                    onChange={(event) => setRejectReason(event.currentTarget.value)}
+                    rows={4}
+                    className="w-full rounded-md border border-white/10 bg-black/35 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-700 focus:border-[color:var(--color-accent-line)]"
+                    placeholder="Too vertical, wrong character, unreadable layout…"
+                  />
+                </label>
+                <div className="grid gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => onApprove(review.review_id, selectedImage.index)}
+                    disabled={selectedImage.approval_status === 'published' || actionKey === `approve-${selectedImage.index}`}
+                    className="w-full"
+                  >
+                    {actionKey === `approve-${selectedImage.index}` ? 'Approving…' : 'Approve image'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => onReject(review.review_id, selectedImage.index, rejectReason)}
+                    disabled={selectedImage.approval_status === 'published' || actionKey === `reject-${selectedImage.index}`}
+                    className="w-full border-red-400/25 text-red-200 hover:bg-red-400/10"
+                  >
+                    {actionKey === `reject-${selectedImage.index}` ? 'Denying…' : 'Deny image'}
+                  </Button>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </article>
   )
 }
@@ -349,7 +439,8 @@ function ReviewHistory({
                 <button
                   type="button"
                   onClick={() => onOpenReview(review.review_id)}
-                  className="self-start font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-accent)] hover:text-zinc-100"
+                  aria-label={`Open ${review.title || 'Untitled image review'}`}
+                  className="self-start rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-[color:var(--color-accent-line)] hover:bg-[color:var(--color-accent-soft)]"
                 >
                   {loadingReviewId === review.review_id ? 'Loading…' : 'Open'}
                 </button>

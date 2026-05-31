@@ -234,6 +234,7 @@ export interface ReviewImageMeta {
   width: number
   height: number
   approval_status?: 'pending' | 'approved' | 'rejected' | 'published'
+  rejection_reason?: string | null
   storage_bucket?: string | null
   object_key?: string | null
   public_url?: string | null
@@ -296,8 +297,13 @@ export async function approveReviewImage(reviewId: string, imageIndex: number): 
   return payload.review
 }
 
-export async function rejectReviewImage(reviewId: string, imageIndex: number): Promise<ReviewManifest> {
-  const response = await fetch(`/api/reviews/${reviewId}/images/${imageIndex}/reject`, { method: 'POST' })
+export async function rejectReviewImage(reviewId: string, imageIndex: number, reason = ''): Promise<ReviewManifest> {
+  const trimmed = reason.trim()
+  const response = await fetch(`/api/reviews/${reviewId}/images/${imageIndex}/reject`, {
+    method: 'POST',
+    headers: trimmed ? { 'Content-Type': 'application/json' } : undefined,
+    body: trimmed ? JSON.stringify({ reason: trimmed }) : undefined,
+  })
   const payload = await parseResponse<{ review: ReviewManifest }>(response)
   return payload.review
 }

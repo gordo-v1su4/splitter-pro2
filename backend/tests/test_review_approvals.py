@@ -131,3 +131,30 @@ def test_reject_review_image_excludes_it_from_publish(
     assert published.status_code == 200
     assert published.json()["review"]["images"][0]["approval_status"] == "rejected"
     assert uploaded_calls == []
+
+
+def test_reject_review_image_can_store_optional_reason(
+    tmp_path: Path,
+    client: TestClient,
+) -> None:
+    image_bytes = make_png(tmp_path / "frame-001.png", (220, 80, 80))
+    create = client.post(
+        "/api/reviews",
+        data={"title": "Reject reason pass"},
+        files=[("files", ("frame-001.png", image_bytes, "image/png"))],
+    )
+    assert create.status_code == 200
+    review_id = create.json()["review"]["review_id"]
+
+    reject = client.post(
+        f"/api/reviews/{review_id}/images/1/reject",
+        json={"reason": "too vertical and hard to read"},
+    )
+
+    assert reject.status_code == 200
+    image = reject.json()["review"]["images"][0]
+    assert image["approval_status"] == "rejected"
+    assert image["rejection_reason"] == "too vertical and hard to read"
+
+    persisted = client.get(f"/api/reviews/{review_id}")
+    assert persisted.json()["review"]["images"][0]["rejection_reason"] == "too vertical and hard to read"

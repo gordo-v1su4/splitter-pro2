@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import shutil
 
-from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
@@ -298,8 +298,13 @@ def create_app() -> FastAPI:
         tags=["Reviews"],
         summary="Reject one review image so it will not be published",
     )
-    def reject_review_image_endpoint(review_id: str, image_index: int) -> ReviewResponse:
-        return ReviewResponse(review=reviews.set_review_image_approval(review_id, image_index, "rejected"))
+    def reject_review_image_endpoint(
+        review_id: str,
+        image_index: int,
+        payload: dict[str, str | None] | None = Body(default=None),
+    ) -> ReviewResponse:
+        reason = payload.get("reason") if payload else None
+        return ReviewResponse(review=reviews.set_review_image_approval(review_id, image_index, "rejected", reason))
 
     @app.post(
         "/api/reviews/{review_id}/publish-approved",

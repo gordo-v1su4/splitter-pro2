@@ -136,6 +136,7 @@ class ReviewImage(BaseModel):
     width: int
     height: int
     approval_status: str = "pending"
+    rejection_reason: str | None = None
     storage_bucket: str | None = None
     object_key: str | None = None
     public_url: str | None = None
