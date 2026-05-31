@@ -111,12 +111,22 @@ describe('App', () => {
     expect(screen.getByRole('link', { name: /keyframes\.zip/i })).toBeInTheDocument()
   })
 
-  it('publishes images into a review board', async () => {
+  it('publishes images into a condensed image review board with history below', async () => {
     fetchMock
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            reviews: [],
+            reviews: [
+              {
+                review_id: 'old-review',
+                title: 'Yesterday good takes',
+                notes: 'hero frame candidates',
+                image_count: 4,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                cover_asset_path: 'images/cover.png',
+              },
+            ],
           }),
         ),
       )
@@ -143,17 +153,25 @@ describe('App', () => {
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /reviews/i }))
-    await user.type(screen.getByLabelText(/review title/i), 'Smoke pass')
-    await user.upload(screen.getByLabelText(/choose review images/i), [
+    expect(screen.getByRole('heading', { name: /image review/i })).toBeInTheDocument()
+    expect(screen.getByText(/publish generated images and why they matter/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /history/i })).toBeInTheDocument()
+    expect(await screen.findByText(/Yesterday good takes/i)).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/title/i), 'Smoke pass')
+    await user.upload(screen.getByLabelText(/images/i), [
       new File(['a'], 'a.png', { type: 'image/png' }),
       new File(['b'], 'b.png', { type: 'image/png' }),
     ])
-    await user.click(screen.getByRole('button', { name: /publish review/i }))
+    await user.click(screen.getByRole('button', { name: /publish images/i }))
 
     await waitFor(() => {
-      expect(screen.getByText(/Smoke pass/i)).toBeInTheDocument()
+      expect(screen.getAllByText(/Smoke pass/i).length).toBeGreaterThan(0)
     })
     expect(screen.getByRole('img', { name: /a.png/i })).toBeInTheDocument()
+    expect(screen.getAllByText(/Pick one\./i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/2 images/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Yesterday good takes/i)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('/api/reviews', expect.objectContaining({ method: 'POST' }))
   })
 

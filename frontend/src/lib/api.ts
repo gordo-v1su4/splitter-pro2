@@ -261,6 +261,12 @@ export async function listReviews(): Promise<ReviewSummary[]> {
   return payload.reviews
 }
 
+export async function fetchReview(reviewId: string): Promise<ReviewManifest> {
+  const response = await fetch(`/api/reviews/${reviewId}`)
+  const payload = await parseResponse<{ review: ReviewManifest }>(response)
+  return payload.review
+}
+
 export async function createReview(files: File[], title: string, notes: string): Promise<ReviewManifest> {
   const formData = new FormData()
   for (const file of files) {
