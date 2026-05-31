@@ -3,12 +3,13 @@ import { Film } from 'lucide-react'
 
 import { ImageSplitWorkspace } from './components/image-split-workspace'
 import { JobStatusPanel } from './components/job-status-panel'
+import { ReviewWorkspace } from './components/review-workspace'
 import { SegmentCard } from './components/segment-card'
 import { UploadPanel } from './components/upload-panel'
 import { assetUrl, fetchJob, fetchJobResult, type JobManifest, type JobState, submitVideo } from './lib/api'
 import { formatDuration } from './lib/utils'
 
-type WorkspaceTab = 'video' | 'image'
+type WorkspaceTab = 'video' | 'image' | 'review'
 
 function App() {
   const [workspace, setWorkspace] = useState<WorkspaceTab>('video')
@@ -127,6 +128,8 @@ function App() {
 
         {workspace === 'image' ? (
           <ImageSplitWorkspace />
+        ) : workspace === 'review' ? (
+          <ReviewWorkspace />
         ) : (
           <>
             {hasActiveWork ? <HeroCompact /> : <HeroFull />}
@@ -196,6 +199,9 @@ function TopNav({
         </button>
         <button type="button" className={tabClassName('image')} onClick={() => onSelectTab('image')}>
           Image grids
+        </button>
+        <button type="button" className={tabClassName('review')} onClick={() => onSelectTab('review')}>
+          Reviews
         </button>
         <span className="hidden text-zinc-700 sm:inline">/</span>
         <a className="text-zinc-500 transition-colors hover:text-zinc-200" href="/docs" rel="noreferrer">

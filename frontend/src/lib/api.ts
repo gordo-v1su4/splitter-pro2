@@ -227,6 +227,66 @@ export function imageSplitZipUrl(splitId: string): string {
   return `/api/image-split/${splitId}/export.zip`
 }
 
+export interface ReviewImageMeta {
+  index: number
+  label: string
+  asset_path: string
+  width: number
+  height: number
+}
+
+export interface ReviewManifest {
+  review_id: string
+  title: string
+  notes: string
+  image_count: number
+  images: ReviewImageMeta[]
+  created_at: string
+  updated_at: string
+}
+
+export interface ReviewSummary {
+  review_id: string
+  title: string
+  notes: string
+  image_count: number
+  created_at: string
+  updated_at: string
+  cover_asset_path: string | null
+}
+
+export async function listReviews(): Promise<ReviewSummary[]> {
+  const response = await fetch('/api/reviews')
+  const payload = await parseResponse<{ reviews: ReviewSummary[] }>(response)
+  return payload.reviews
+}
+
+export async function createReview(files: File[], title: string, notes: string): Promise<ReviewManifest> {
+  const formData = new FormData()
+  for (const file of files) {
+    formData.append('files', file)
+  }
+  formData.append('title', title)
+  formData.append('notes', notes)
+
+  const response = await fetch('/api/reviews', {
+    method: 'POST',
+    body: formData,
+  })
+
+  const payload = await parseResponse<{ review: ReviewManifest }>(response)
+  return payload.review
+}
+
+export function reviewAssetUrl(reviewId: string, assetPath: string): string {
+  const safe = assetPath
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/')
+  return `/api/reviews/${reviewId}/assets/${safe}`
+}
+
 export async function recordGoogleSheetsUrl(url: string): Promise<boolean> {
   const trimmed = url.trim()
   if (!trimmed) {

@@ -110,4 +110,51 @@ describe('App', () => {
     expect(screen.getByRole('img', { name: /segment 1 keyframe/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /keyframes\.zip/i })).toBeInTheDocument()
   })
+
+  it('publishes images into a review board', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            reviews: [],
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            review: {
+              review_id: 'review-1',
+              title: 'Smoke pass',
+              notes: 'Pick one.',
+              image_count: 2,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              images: [
+                { index: 1, label: 'a.png', asset_path: 'images/a.png', width: 1280, height: 720 },
+                { index: 2, label: 'b.png', asset_path: 'images/b.png', width: 1280, height: 720 },
+              ],
+            },
+          }),
+        ),
+      )
+
+    render(<App />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /reviews/i }))
+    await user.type(screen.getByLabelText(/review title/i), 'Smoke pass')
+    await user.upload(screen.getByLabelText(/choose review images/i), [
+      new File(['a'], 'a.png', { type: 'image/png' }),
+      new File(['b'], 'b.png', { type: 'image/png' }),
+    ])
+    await user.click(screen.getByRole('button', { name: /publish review/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Smoke pass/i)).toBeInTheDocument()
+    })
+    expect(screen.getByRole('img', { name: /a.png/i })).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith('/api/reviews', expect.objectContaining({ method: 'POST' }))
+  })
+
 })

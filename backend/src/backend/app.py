@@ -7,7 +7,7 @@ from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadF
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
-from . import image_split
+from . import image_split, reviews
 from .config import get_settings
 from .docs_theme import SWAGGER_UI_DARK_ROUTE, SWAGGER_UI_DARK_STYLESHEET_PATH, swagger_ui_dark_html
 from .models import (
@@ -18,6 +18,8 @@ from .models import (
     JobResultResponse,
     JobState,
     JobStatus,
+    ReviewListResponse,
+    ReviewResponse,
     SheetsStubResponse,
 )
 from .processing import process_job
@@ -28,6 +30,7 @@ OPENAPI_TAGS = [
     {"name": "Health", "description": "Liveness and readiness checks."},
     {"name": "Video jobs", "description": "Upload a video for PySceneDetect segmentation and exports."},
     {"name": "Image split", "description": "Storyboard-style image grid splitting (fixed or auto)."},
+    {"name": "Reviews", "description": "Publish image sets into a local review board."},
     {"name": "Integrations", "description": "Optional integration hooks (currently stubbed)."},
 ]
 
@@ -243,6 +246,49 @@ def create_app() -> FastAPI:
             media_type="application/zip",
             headers={"Content-Disposition": f'attachment; filename="{attachment}"'},
         )
+
+
+    @app.post(
+        "/api/reviews",
+        response_model=ReviewResponse,
+        responses={400: {"model": ErrorResponse}},
+        tags=["Reviews"],
+        summary="Publish images into a review gallery",
+    )
+    def create_review_endpoint(
+        files: list[UploadFile] = File(..., description="PNG/JPEG/WebP images to review."),
+        title: str = Form("Untitled review"),
+        notes: str = Form(""),
+    ) -> ReviewResponse:
+        return ReviewResponse(review=reviews.create_review(title, notes, files))
+
+    @app.get(
+        "/api/reviews",
+        response_model=ReviewListResponse,
+        tags=["Reviews"],
+        summary="List published image review galleries",
+    )
+    def list_reviews_endpoint() -> ReviewListResponse:
+        return ReviewListResponse(reviews=reviews.list_reviews())
+
+    @app.get(
+        "/api/reviews/{review_id}",
+        response_model=ReviewResponse,
+        responses={404: {"model": ErrorResponse}},
+        tags=["Reviews"],
+        summary="Read one image review gallery",
+    )
+    def get_review_endpoint(review_id: str) -> ReviewResponse:
+        return ReviewResponse(review=reviews.get_review(review_id))
+
+    @app.get(
+        "/api/reviews/{review_id}/assets/{asset_path:path}",
+        response_model=None,
+        tags=["Reviews"],
+        summary="Download a review image",
+    )
+    def get_review_asset(review_id: str, asset_path: str) -> FileResponse:
+        return FileResponse(reviews.resolve_review_asset(review_id, asset_path))
 
     @app.post(
         "/api/integrations/google-sheets",

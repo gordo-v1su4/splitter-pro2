@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     app_name: str = "Splitter Pro 2"
     data_dir: Path = Field(default_factory=lambda: REPO_ROOT / "data" / "jobs")
     image_splits_dir: Path = Field(default_factory=lambda: REPO_ROOT / "data" / "image_splits")
+    reviews_dir: Path = Field(default_factory=lambda: REPO_ROOT / "data" / "reviews")
     frontend_dist_dir: Path = Field(default_factory=lambda: REPO_ROOT / "frontend" / "dist")
     allowed_origins: list[str] = Field(
         default_factory=lambda: [
@@ -54,4 +55,5 @@ def get_settings() -> Settings:
     settings = Settings()
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.image_splits_dir.mkdir(parents=True, exist_ok=True)
+    settings.reviews_dir.mkdir(parents=True, exist_ok=True)
     return settings

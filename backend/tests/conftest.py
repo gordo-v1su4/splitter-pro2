@@ -17,8 +17,11 @@ def temp_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     (frontend_dist / "index.html").write_text("<html><body>Splitter Pro 2</body></html>", encoding="utf-8")
     image_splits = tmp_path / "image_splits"
     image_splits.mkdir(parents=True, exist_ok=True)
+    reviews = tmp_path / "reviews"
+    reviews.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("SPLITTER_DATA_DIR", str(data_dir))
     monkeypatch.setenv("SPLITTER_IMAGE_SPLITS_DIR", str(image_splits))
+    monkeypatch.setenv("SPLITTER_REVIEWS_DIR", str(reviews))
     monkeypatch.setenv("SPLITTER_FRONTEND_DIST_DIR", str(frontend_dist))
     monkeypatch.setenv("SPLITTER_SCENE_THRESHOLD", "12.0")
     get_settings.cache_clear()

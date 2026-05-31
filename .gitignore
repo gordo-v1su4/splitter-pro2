@@ -12,3 +12,6 @@ frontend/.vite/
 data/jobs/
 data/image_splits/
 *.pyc
+data/reviews/
+data/review-smoke/
+data/*.log

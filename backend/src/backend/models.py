@@ -129,6 +129,42 @@ class ImageSplitBatchResponse(BaseModel):
     manifest: ImageSplitBatchManifest
 
 
+class ReviewImage(BaseModel):
+    index: int
+    label: str
+    asset_path: str
+    width: int
+    height: int
+
+
+class ReviewManifest(BaseModel):
+    review_id: str
+    title: str
+    notes: str = ""
+    image_count: int
+    images: list[ReviewImage]
+    created_at: datetime
+    updated_at: datetime
+
+
+class ReviewSummary(BaseModel):
+    review_id: str
+    title: str
+    notes: str = ""
+    image_count: int
+    created_at: datetime
+    updated_at: datetime
+    cover_asset_path: str | None = None
+
+
+class ReviewResponse(BaseModel):
+    review: ReviewManifest
+
+
+class ReviewListResponse(BaseModel):
+    reviews: list[ReviewSummary]
+
+
 class SheetsStubResponse(BaseModel):
     recorded: bool
     sheets_url_digest: str | None = Field(
