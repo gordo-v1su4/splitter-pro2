@@ -176,6 +176,102 @@ class ReviewListResponse(BaseModel):
     reviews: list[ReviewSummary]
 
 
+class ProjectAsset(BaseModel):
+    asset_id: str
+    source_kind: str
+    asset_type: str
+    label: str
+    filename: str
+    width: int
+    height: int
+    asset_path: str
+    storage_bucket: str | None = None
+    object_key: str | None = None
+    public_url: str | None = None
+    notes: str = ""
+    created_at: datetime
+
+
+class ProjectCharacter(BaseModel):
+    character_id: str
+    name: str
+    sheet_asset_id: str
+    crop_asset_id: str | None = None
+    look_label: str | None = None
+    notes: str = ""
+    created_at: datetime
+
+
+class ProjectShotGrid(BaseModel):
+    shot_grid_id: str
+    source_asset_id: str
+    rows: int = 3
+    cols: int = 3
+    status: str = "intact"
+
+
+class ProjectShotFrame(BaseModel):
+    shot_frame_id: str
+    shot_grid_id: str
+    asset_id: str
+    row: int
+    col: int
+    index: int
+    selected: bool = False
+    sequence_order: int | None = None
+
+
+class ProjectRefinementJob(BaseModel):
+    job_id: str
+    input_asset_ids: list[str]
+    reference_asset_ids: list[str] = []
+    workflow_name: str
+    status: str = "queued"
+    result_asset_ids: list[str] = []
+    settings_json: dict = Field(default_factory=dict)
+    error: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProjectManifest(BaseModel):
+    project_id: str
+    title: str
+    status: str = "active"
+    source_review_id: str | None = None
+    hero_asset_id: str | None = None
+    assets: list[ProjectAsset] = []
+    characters: list[ProjectCharacter] = []
+    shot_grids: list[ProjectShotGrid] = []
+    shot_frames: list[ProjectShotFrame] = []
+    refinement_jobs: list[ProjectRefinementJob] = []
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProjectSummary(BaseModel):
+    project_id: str
+    title: str
+    status: str
+    source_review_id: str | None = None
+    hero_asset_path: str | None = None
+    hero_public_url: str | None = None
+    asset_count: int = 0
+    character_count: int = 0
+    shot_grid_count: int = 0
+    shot_frame_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProjectResponse(BaseModel):
+    project: ProjectManifest
+
+
+class ProjectListResponse(BaseModel):
+    projects: list[ProjectSummary]
+
+
 class SheetsStubResponse(BaseModel):
     recorded: bool
     sheets_url_digest: str | None = Field(

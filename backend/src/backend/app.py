@@ -7,7 +7,7 @@ from fastapi import BackgroundTasks, Body, FastAPI, File, Form, HTTPException, U
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
-from . import image_split, reviews
+from . import image_split, projects, reviews
 from .config import get_settings
 from .docs_theme import SWAGGER_UI_DARK_ROUTE, SWAGGER_UI_DARK_STYLESHEET_PATH, swagger_ui_dark_html
 from .models import (
@@ -18,6 +18,8 @@ from .models import (
     JobResultResponse,
     JobState,
     JobStatus,
+    ProjectListResponse,
+    ProjectResponse,
     ReviewListResponse,
     ReviewResponse,
     SheetsStubResponse,
@@ -29,8 +31,9 @@ from .storage import create_job, load_manifest, read_state, resolve_asset
 OPENAPI_TAGS = [
     {"name": "Health", "description": "Liveness and readiness checks."},
     {"name": "Video jobs", "description": "Upload a video for PySceneDetect segmentation and exports."},
-    {"name": "Image split", "description": "Storyboard-style image grid splitting (fixed or auto)."},
+    {"name": "Image split", "description": "Cinematic shot-grid image splitting (fixed or auto)."},
     {"name": "Reviews", "description": "Publish image sets into a local review board."},
+    {"name": "Projects", "description": "Working project pages for approved looks, character sheets, shot grids, and refinement passes."},
     {"name": "Integrations", "description": "Optional integration hooks (currently stubbed)."},
 ]
 
@@ -40,7 +43,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
         description=(
-            "Splitter Pro: local-first video scene detection and storyboard-style image panel splitting. "
+            "Splitter Pro: local-first video scene detection and cinematic shot-grid image panel splitting. "
             "Interactive API docs are served at `/docs` (Swagger UI)."
         ),
         version="0.2.0",
@@ -129,7 +132,7 @@ def create_app() -> FastAPI:
         summary="Split an image using a fixed row/column grid",
     )
     def split_image_fixed_grid(
-        file: UploadFile = File(..., description="Source storyboard or contact sheet image."),
+        file: UploadFile = File(..., description="Source cinematic shot grid or contact sheet image."),
         rows: int = Form(3, ge=1, le=24, description="Number of rows in the grid."),
         cols: int = Form(3, ge=1, le=24, description="Number of columns in the grid."),
         gutter_px: int = Form(0, ge=0, le=96, description="Pixel gutter skipped between tiles."),
@@ -145,7 +148,7 @@ def create_app() -> FastAPI:
         summary="Auto-detect panel gutters and split the image",
     )
     def split_image_auto(
-        file: UploadFile = File(..., description="Source storyboard containing multiple tiled panels."),
+        file: UploadFile = File(..., description="Source cinematic shot grid containing multiple tiled panels."),
         gutter_px: int = Form(
             0,
             ge=0,
@@ -315,6 +318,64 @@ def create_app() -> FastAPI:
     )
     def publish_approved_review_images_endpoint(review_id: str) -> ReviewResponse:
         return ReviewResponse(review=reviews.publish_approved_review_images(review_id))
+
+    @app.post(
+        "/api/reviews/{review_id}/project",
+        response_model=ProjectResponse,
+        responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+        tags=["Projects"],
+        summary="Create a working project page from published approved review images",
+    )
+    def create_project_from_review_endpoint(
+        review_id: str,
+        title: str | None = Form(default=None),
+    ) -> ProjectResponse:
+        return ProjectResponse(project=projects.create_project_from_review(review_id, title))
+
+    @app.get(
+        "/api/projects",
+        response_model=ProjectListResponse,
+        tags=["Projects"],
+        summary="List working visual storyline projects",
+    )
+    def list_projects_endpoint() -> ProjectListResponse:
+        return ProjectListResponse(projects=projects.list_projects())
+
+    @app.get(
+        "/api/projects/{project_id}",
+        response_model=ProjectResponse,
+        responses={404: {"model": ErrorResponse}},
+        tags=["Projects"],
+        summary="Read one working project page",
+    )
+    def get_project_endpoint(project_id: str) -> ProjectResponse:
+        return ProjectResponse(project=projects.get_project(project_id))
+
+    @app.post(
+        "/api/projects/{project_id}/assets",
+        response_model=ProjectResponse,
+        responses={400: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+        tags=["Projects"],
+        summary="Upload and classify a project asset before downstream processing",
+    )
+    def add_project_asset_endpoint(
+        project_id: str,
+        file: UploadFile = File(..., description="Character sheet, single still, cinematic shot grid, or refinement result."),
+        asset_type: str = Form(..., description="character_sheet, single_still, cinematic_shot_grid, extracted_shot, refined_shot, or other"),
+        label: str = Form(""),
+        notes: str = Form(""),
+        character_name: str = Form(""),
+    ) -> ProjectResponse:
+        return ProjectResponse(project=projects.add_uploaded_asset(project_id, file, asset_type, label, notes, character_name))
+
+    @app.get(
+        "/api/projects/{project_id}/assets/{asset_path:path}",
+        response_model=None,
+        tags=["Projects"],
+        summary="Download a project asset",
+    )
+    def get_project_asset(project_id: str, asset_path: str) -> FileResponse:
+        return FileResponse(projects.resolve_project_asset(project_id, asset_path))
 
     @app.get(
         "/api/reviews/{review_id}/assets/{asset_path:path}",

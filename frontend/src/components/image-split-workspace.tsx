@@ -211,7 +211,7 @@ export function ImageSplitWorkspace() {
                 </span>
                 <input
                   accept="image/png,image/jpeg,image/webp"
-                  aria-label="Storyboard upload"
+                  aria-label="Cinematic shot grid upload"
                   className="sr-only"
                   id={uploadId}
                   multiple

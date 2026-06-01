@@ -16,7 +16,7 @@ describe('App', () => {
     fetchMock.mockReset()
   })
 
-  it('uploads a video and renders storyboard results', async () => {
+  it('uploads a video and renders shot-sequence results', async () => {
     fetchMock
       .mockResolvedValueOnce(
         new Response(
@@ -105,7 +105,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /process video/i }))
 
     await waitFor(() => {
-      expect(screen.getByText(/storyboard ready/i)).toBeInTheDocument()
+      expect(screen.getByText(/shot sequence ready/i)).toBeInTheDocument()
     })
     expect(screen.getByRole('img', { name: /segment 1 keyframe/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /keyframes\.zip/i })).toBeInTheDocument()
@@ -135,6 +135,7 @@ describe('App', () => {
           }),
         ),
       )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ projects: [] })))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -233,22 +234,20 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /view a\.png/i }))
     await user.click(screen.getByRole('button', { name: /approve image/i }))
     await waitFor(() => {
-      expect(screen.getAllByText(/^approved$/i).length).toBeGreaterThan(0)
+      expect(screen.queryByRole('dialog', { name: /a\.png/i })).not.toBeInTheDocument()
     })
+    expect(screen.getAllByText(/1 pending/i).length).toBeGreaterThan(0)
     await user.click(screen.getByRole('button', { name: /publish approved/i }))
 
     await waitFor(() => {
-      expect(screen.getAllByRole('img', { name: /^a\.png$/i })[0]).toHaveAttribute(
-        'src',
-        'https://s3.v1su4.dev/splitter/reviews/review-1/approved/a.png',
-      )
+      expect(fetchMock).toHaveBeenCalledWith('/api/reviews/review-1/publish-approved', expect.objectContaining({ method: 'POST' }))
     })
     expect(screen.getByRole('img', { name: /Yesterday good takes thumbnail/i })).toHaveAttribute(
       'src',
       'https://s3.v1su4.dev/splitter/reviews/old-review/images/cover.png',
     )
     expect(screen.getAllByText(/Pick one\./i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/2 images/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/4 images/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Yesterday good takes/i).length).toBeGreaterThan(0)
     expect(fetchMock).toHaveBeenCalledWith('/api/reviews', expect.objectContaining({ method: 'POST' }))
     expect(fetchMock).toHaveBeenCalledWith('/api/reviews/review-1/images/1/approve', expect.objectContaining({ method: 'POST' }))
@@ -279,6 +278,7 @@ describe('App', () => {
           }),
         ),
       )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ projects: [] })))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -351,8 +351,10 @@ describe('App', () => {
     const rejectRequest = fetchMock.mock.calls.find(([url]) => url === '/api/reviews/review-visual/images/1/reject')
     expect(JSON.parse(rejectRequest?.[1]?.body as string)).toEqual({ reason: 'too vertical and hard to read' })
     await waitFor(() => {
-      expect(screen.getAllByText(/too vertical and hard to read/i).length).toBeGreaterThan(0)
+      expect(screen.queryByRole('dialog', { name: /grid\.png/i })).not.toBeInTheDocument()
     })
+    expect(screen.getAllByText(/Gen-X Vampire 3x3 Grids/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/0 pending/i).length).toBeGreaterThan(0)
   })
 
 })

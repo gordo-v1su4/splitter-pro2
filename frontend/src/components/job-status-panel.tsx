@@ -38,7 +38,7 @@ const toneStyles: Record<Tone, { dot: string; text: string; headline: string; su
     dot: 'bg-zinc-500/70',
     text: 'text-zinc-400/90',
     headline: 'Done',
-    sub: 'Storyboard rendered below.',
+    sub: 'Shot sequence rendered below.',
   },
   failed: {
     dot: 'bg-red-400',

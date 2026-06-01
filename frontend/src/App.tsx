@@ -34,7 +34,7 @@ function App() {
         }, 350)
         return
       }
-      setError(cause instanceof Error ? cause.message : 'Unable to load storyboard results.')
+      setError(cause instanceof Error ? cause.message : 'Unable to load shot-sequence results.')
     }
   }
 
@@ -146,7 +146,7 @@ function App() {
 
             {manifest ? (
               <section className="mt-8 space-y-5">
-                <StoryboardHeader manifest={manifest} onReset={resetJob} />
+                <ShotSequenceHeader manifest={manifest} onReset={resetJob} />
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {manifest.segments.map((segment) => (
@@ -155,7 +155,7 @@ function App() {
                 </div>
               </section>
             ) : !hasActiveWork ? (
-              <EmptyStoryboard />
+              <EmptyShotSequence />
             ) : null}
           </>
         )}
@@ -270,7 +270,7 @@ function Spec({ label, value }: { label: string; value: string }) {
   )
 }
 
-function StoryboardHeader({
+function ShotSequenceHeader({
   manifest,
   onReset,
 }: {
@@ -300,7 +300,7 @@ function StoryboardHeader({
   return (
     <div className="space-y-3 border-t border-white/[0.04] pt-4">
       <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-600">
-        <span className="text-zinc-500/90">Storyboard ready</span>
+        <span className="text-zinc-500/90">Shot sequence ready</span>
       </p>
       <div className="flex flex-col gap-2 min-[1024px]:flex-row min-[1024px]:items-start min-[1024px]:justify-between min-[1024px]:gap-6">
         <div className="min-w-0 flex-1">
@@ -350,7 +350,7 @@ function StoryboardHeader({
   )
 }
 
-function EmptyStoryboard() {
+function EmptyShotSequence() {
   return (
     <section className="mt-8 border-t border-white/[0.06] pt-8">
       <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">

@@ -266,6 +266,106 @@ export interface ReviewSummary {
   published_count?: number
 }
 
+export interface ProjectAsset {
+  asset_id: string
+  source_kind: string
+  asset_type: 'character_sheet' | 'single_still' | 'cinematic_shot_grid' | 'extracted_shot' | 'refined_shot' | 'other'
+  label: string
+  filename: string
+  width: number
+  height: number
+  asset_path: string
+  storage_bucket?: string | null
+  object_key?: string | null
+  public_url?: string | null
+  notes: string
+  created_at: string
+}
+
+export interface ProjectCharacter {
+  character_id: string
+  name: string
+  sheet_asset_id: string
+  crop_asset_id?: string | null
+  look_label?: string | null
+  notes: string
+  created_at: string
+}
+
+export interface ProjectManifest {
+  project_id: string
+  title: string
+  status: string
+  source_review_id?: string | null
+  hero_asset_id?: string | null
+  assets: ProjectAsset[]
+  characters: ProjectCharacter[]
+  shot_grids: unknown[]
+  shot_frames: unknown[]
+  refinement_jobs: unknown[]
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectSummary {
+  project_id: string
+  title: string
+  status: string
+  source_review_id?: string | null
+  hero_asset_path?: string | null
+  hero_public_url?: string | null
+  asset_count: number
+  character_count: number
+  shot_grid_count: number
+  shot_frame_count: number
+  created_at: string
+  updated_at: string
+}
+
+export async function createProjectFromReview(reviewId: string, title = ''): Promise<ProjectManifest> {
+  const formData = new FormData()
+  if (title.trim()) {
+    formData.append('title', title.trim())
+  }
+  const response = await fetch(`/api/reviews/${reviewId}/project`, { method: 'POST', body: formData })
+  const payload = await parseResponse<{ project: ProjectManifest }>(response)
+  return payload.project
+}
+
+export async function listProjects(): Promise<ProjectSummary[]> {
+  const response = await fetch('/api/projects')
+  const payload = await parseResponse<{ projects: ProjectSummary[] }>(response)
+  return payload.projects
+}
+
+export async function addProjectAsset(
+  projectId: string,
+  file: File,
+  assetType: ProjectAsset['asset_type'],
+  label: string,
+  notes: string,
+  characterName = '',
+): Promise<ProjectManifest> {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('asset_type', assetType)
+  formData.append('label', label)
+  formData.append('notes', notes)
+  formData.append('character_name', characterName)
+  const response = await fetch(`/api/projects/${projectId}/assets`, { method: 'POST', body: formData })
+  const payload = await parseResponse<{ project: ProjectManifest }>(response)
+  return payload.project
+}
+
+export function projectAssetUrl(projectId: string, assetPath: string): string {
+  const safe = assetPath
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/')
+  return `/api/projects/${projectId}/assets/${safe}`
+}
+
 export async function listReviews(): Promise<ReviewSummary[]> {
   const response = await fetch('/api/reviews')
   const payload = await parseResponse<{ reviews: ReviewSummary[] }>(response)

@@ -1,13 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import {
+  addProjectAsset,
   approveReviewImage,
+  createProjectFromReview,
   createReview,
   fetchReview,
+  listProjects,
   listReviews,
+  projectAssetUrl,
   publishApprovedReviewImages,
   rejectReviewImage,
   reviewAssetUrl,
+  type ProjectAsset,
+  type ProjectManifest,
+  type ProjectSummary,
   type ReviewManifest,
   type ReviewSummary,
 } from '../lib/api'
@@ -19,7 +26,9 @@ export function ReviewWorkspace() {
   const [notes, setNotes] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [reviews, setReviews] = useState<ReviewSummary[]>([])
+  const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [activeReview, setActiveReview] = useState<ReviewManifest | null>(null)
+  const [activeProject, setActiveProject] = useState<ProjectManifest | null>(null)
   const [isPublishing, setIsPublishing] = useState(false)
   const [reviewActionKey, setReviewActionKey] = useState<string | null>(null)
   const [loadingReviewId, setLoadingReviewId] = useState<string | null>(null)
@@ -31,12 +40,23 @@ export function ReviewWorkspace() {
     listReviews()
       .then((nextReviews) => {
         if (isMounted) {
-          setReviews(nextReviews)
+          setReviews(sortReviewsNewest(nextReviews))
         }
       })
       .catch(() => {
         if (isMounted) {
           setReviews([])
+        }
+      })
+    listProjects()
+      .then((nextProjects) => {
+        if (isMounted) {
+          setProjects(nextProjects)
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setProjects([])
         }
       })
     return () => {
@@ -50,7 +70,7 @@ export function ReviewWorkspace() {
     try {
       const review = await createReview(files, title, notes)
       setActiveReview(review)
-      setReviews((current) => upsertReviewSummary(current, review))
+      setReviews((current) => sortReviewsNewest(upsertReviewSummary(current, review)))
       setTitle('')
       setNotes('')
       setFiles([])
@@ -84,7 +104,7 @@ export function ReviewWorkspace() {
     try {
       const review = await action()
       setActiveReview(review)
-      setReviews((current) => upsertReviewSummary(current, review))
+      setReviews((current) => sortReviewsNewest(upsertReviewSummary(current, review)))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : fallbackMessage)
     } finally {
@@ -110,6 +130,41 @@ export function ReviewWorkspace() {
 
   function publishApproved(reviewId: string) {
     void runReviewAction('publish-approved', () => publishApprovedReviewImages(reviewId), 'Unable to publish approved images.')
+  }
+
+  async function createProject(reviewId: string) {
+    setReviewActionKey('create-project')
+    setError(null)
+    try {
+      const project = await createProjectFromReview(reviewId)
+      setActiveProject(project)
+      setProjects((current) => upsertProjectSummary(current, project))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to create project page.')
+    } finally {
+      setReviewActionKey(null)
+    }
+  }
+
+  async function addAssetToActiveProject(
+    file: File,
+    assetType: ProjectAsset['asset_type'],
+    label: string,
+    notes: string,
+    characterName: string,
+  ) {
+    if (!activeProject) return
+    setReviewActionKey('add-project-asset')
+    setError(null)
+    try {
+      const project = await addProjectAsset(activeProject.project_id, file, assetType, label, notes, characterName)
+      setActiveProject(project)
+      setProjects((current) => upsertProjectSummary(current, project))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to add project asset.')
+    } finally {
+      setReviewActionKey(null)
+    }
   }
 
   return (
@@ -194,8 +249,19 @@ export function ReviewWorkspace() {
           onApprove={approveImage}
           onReject={rejectImage}
           onPublishApproved={publishApproved}
+          onCreateProject={(reviewId) => void createProject(reviewId)}
         />
       ) : null}
+
+      {activeProject ? (
+        <ProjectPage
+          project={activeProject}
+          isBusy={reviewActionKey === 'add-project-asset'}
+          onAddAsset={addAssetToActiveProject}
+        />
+      ) : null}
+
+      <ProjectStrip projects={projects} />
 
       <ReviewHistory reviews={reviews} loadingReviewId={loadingReviewId} onOpenReview={(reviewId) => void openReview(reviewId)} />
     </section>
@@ -220,6 +286,39 @@ function upsertReviewSummary(current: ReviewSummary[], review: ReviewManifest): 
   ]
 }
 
+function sortReviewsNewest(reviews: ReviewSummary[]): ReviewSummary[] {
+  return [...reviews].sort((left, right) => {
+    const rightTime = Date.parse(right.updated_at || right.created_at)
+    const leftTime = Date.parse(left.updated_at || left.created_at)
+    return rightTime - leftTime
+  })
+}
+
+function hasPendingImages(review: ReviewSummary): boolean {
+  return (review.pending_count ?? review.image_count) > 0
+}
+
+function upsertProjectSummary(current: ProjectSummary[], project: ProjectManifest): ProjectSummary[] {
+  const hero = project.assets.find((asset) => asset.asset_id === project.hero_asset_id) ?? project.assets[0]
+  return [
+    {
+      project_id: project.project_id,
+      title: project.title,
+      status: project.status,
+      source_review_id: project.source_review_id,
+      hero_asset_path: hero?.asset_path ?? null,
+      hero_public_url: hero?.public_url ?? null,
+      asset_count: project.assets.length,
+      character_count: project.characters.length,
+      shot_grid_count: project.shot_grids.length,
+      shot_frame_count: project.shot_frames.length,
+      created_at: project.created_at,
+      updated_at: project.updated_at,
+    },
+    ...current.filter((item) => item.project_id !== project.project_id),
+  ]
+}
+
 function summarizeReviewStatuses(review: ReviewManifest) {
   return review.images.reduce(
     (counts, image) => {
@@ -240,6 +339,7 @@ function ReviewGallery({
   onApprove,
   onReject,
   onPublishApproved,
+  onCreateProject,
   autoInspectToken,
 }: {
   review: ReviewManifest
@@ -248,10 +348,13 @@ function ReviewGallery({
   onApprove: (reviewId: string, imageIndex: number) => void
   onReject: (reviewId: string, imageIndex: number, reason?: string) => void
   onPublishApproved: (reviewId: string) => void
+  onCreateProject: (reviewId: string) => void
 }) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const pendingImages = review.images.filter((image) => (image.approval_status ?? 'pending') === 'pending')
   const approvedCount = review.images.filter((image) => image.approval_status === 'approved').length
+  const publishedCount = review.images.filter((image) => image.approval_status === 'published').length
   const selectedImage = review.images.find((image) => image.index === selectedIndex) ?? null
 
   useEffect(() => {
@@ -286,62 +389,76 @@ function ReviewGallery({
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">
             {review.image_count} review frame{review.image_count === 1 ? '' : 's'} · approve before storage
           </p>
-          <Button
-            type="button"
-            onClick={() => onPublishApproved(review.review_id)}
-            disabled={approvedCount === 0 || actionKey === 'publish-approved'}
-            className="w-full sm:w-auto"
-          >
-            {actionKey === 'publish-approved' ? 'Publishing approved…' : `Publish approved (${approvedCount})`}
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              onClick={() => onPublishApproved(review.review_id)}
+              disabled={approvedCount === 0 || actionKey === 'publish-approved'}
+              className="w-full sm:w-auto"
+            >
+              {actionKey === 'publish-approved' ? 'Publishing approved…' : `Publish approved (${approvedCount})`}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => onCreateProject(review.review_id)}
+              disabled={publishedCount === 0 || actionKey === 'create-project'}
+              className="w-full sm:w-auto"
+            >
+              {actionKey === 'create-project' ? 'Creating project…' : 'Create project page'}
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-        {review.images.map((image) => {
-          const status = image.approval_status ?? 'pending'
-          const imageUrl = image.public_url || reviewAssetUrl(review.review_id, image.asset_path)
-          return (
-            <figure
-              key={image.asset_path}
-              className="group overflow-hidden rounded-md border border-white/[0.08] bg-zinc-950 shadow-[0_18px_60px_rgba(0,0,0,0.24)]"
-            >
-              <button
-                type="button"
-                onClick={() => openImage(image.index)}
-                aria-label={`View ${image.label}`}
-                className="relative block w-full overflow-hidden bg-black text-left"
+      {pendingImages.length === 0 ? (
+        <div className="rounded-md border border-emerald-400/20 bg-emerald-400/[0.06] p-4 text-sm text-emerald-100/90">
+          This review has no pending images left. It has moved down into the compact history log.
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          {pendingImages.map((image) => {
+            const status = image.approval_status ?? 'pending'
+            const imageUrl = image.public_url || reviewAssetUrl(review.review_id, image.asset_path)
+            return (
+              <figure
+                key={image.asset_path}
+                className="group overflow-hidden rounded-md border border-white/[0.08] bg-zinc-950 shadow-[0_18px_60px_rgba(0,0,0,0.24)]"
               >
-                <img
-                  src={imageUrl}
-                  alt={image.label}
-                  className="aspect-video w-full bg-black object-contain transition duration-300 group-hover:scale-[1.02]"
-                />
-                <div className="pointer-events-none absolute inset-0 flex items-end bg-gradient-to-t from-black/85 via-black/10 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                  <div className="w-full p-3">
-                    <div className="flex items-center justify-between gap-3 text-xs text-zinc-100">
-                      <span className="truncate font-medium">{image.label}</span>
-                      <span className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-zinc-200">
-                        {status}
-                      </span>
+                <button
+                  type="button"
+                  onClick={() => openImage(image.index)}
+                  aria-label={`View ${image.label}`}
+                  className="relative block w-full overflow-hidden bg-black text-left"
+                >
+                  <img
+                    src={imageUrl}
+                    alt={image.label}
+                    className="aspect-video w-full bg-black object-contain transition duration-300 group-hover:scale-[1.02]"
+                  />
+                  <div className="pointer-events-none absolute inset-0 flex items-end bg-gradient-to-t from-black/85 via-black/10 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                    <div className="w-full p-3">
+                      <div className="flex items-center justify-between gap-3 text-xs text-zinc-100">
+                        <span className="truncate font-medium">{image.label}</span>
+                        <span className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-zinc-200">
+                          {status}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-zinc-400">{image.width}×{image.height} · click to inspect</p>
                     </div>
-                    <p className="mt-1 text-[11px] text-zinc-400">{image.width}×{image.height} · click to inspect</p>
                   </div>
-                </div>
-              </button>
-              <figcaption className="flex items-center justify-between gap-3 px-3 py-2 text-xs text-zinc-400">
-                <span className={status === 'published' ? 'text-emerald-300' : status === 'rejected' ? 'text-red-300' : status === 'approved' ? 'text-[color:var(--color-accent)]' : 'text-zinc-500'}>
-                  {status}
-                </span>
-                <Button type="button" variant="secondary" size="sm" onClick={() => openImage(image.index)}>
-                  Inspect
-                </Button>
-              </figcaption>
-              {image.rejection_reason ? <p className="px-3 pb-3 text-xs leading-5 text-red-200/80">{image.rejection_reason}</p> : null}
-            </figure>
-          )
-        })}
-      </div>
+                </button>
+                <figcaption className="flex items-center justify-between gap-3 px-3 py-2 text-xs text-zinc-400">
+                  <span className="text-zinc-500">{status}</span>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => openImage(image.index)}>
+                    Inspect
+                  </Button>
+                </figcaption>
+              </figure>
+            )
+          })}
+        </div>
+      )}
 
       {selectedImage ? (
         <div
@@ -395,7 +512,10 @@ function ReviewGallery({
                 <div className="grid gap-2">
                   <Button
                     type="button"
-                    onClick={() => onApprove(review.review_id, selectedImage.index)}
+                    onClick={() => {
+                      closeImage()
+                      onApprove(review.review_id, selectedImage.index)
+                    }}
                     disabled={selectedImage.approval_status === 'published' || actionKey === `approve-${selectedImage.index}`}
                     className="w-full"
                   >
@@ -404,7 +524,10 @@ function ReviewGallery({
                   <Button
                     type="button"
                     variant="secondary"
-                    onClick={() => onReject(review.review_id, selectedImage.index, rejectReason)}
+                    onClick={() => {
+                      closeImage()
+                      onReject(review.review_id, selectedImage.index, rejectReason)
+                    }}
                     disabled={selectedImage.approval_status === 'published' || actionKey === `reject-${selectedImage.index}`}
                     className="w-full border-red-400/25 text-red-200 hover:bg-red-400/10"
                   >
@@ -420,6 +543,189 @@ function ReviewGallery({
   )
 }
 
+function ProjectPage({
+  project,
+  isBusy,
+  onAddAsset,
+}: {
+  project: ProjectManifest
+  isBusy: boolean
+  onAddAsset: (file: File, assetType: ProjectAsset['asset_type'], label: string, notes: string, characterName: string) => void
+}) {
+  const [assetType, setAssetType] = useState<ProjectAsset['asset_type']>('character_sheet')
+  const [assetFile, setAssetFile] = useState<File | null>(null)
+  const [assetLabel, setAssetLabel] = useState('')
+  const [characterName, setCharacterName] = useState('')
+  const [assetNotes, setAssetNotes] = useState('')
+  const hero = project.assets.find((asset) => asset.asset_id === project.hero_asset_id) ?? project.assets[0]
+  const sheets = project.assets.filter((asset) => asset.asset_type === 'character_sheet')
+  const shotGrids = project.assets.filter((asset) => asset.asset_type === 'cinematic_shot_grid')
+  const selectedShots = project.assets.filter((asset) => asset.asset_type === 'extracted_shot' || asset.asset_type === 'refined_shot')
+
+  function submitAsset() {
+    if (!assetFile) return
+    onAddAsset(assetFile, assetType, assetLabel, assetNotes, characterName)
+    setAssetFile(null)
+    setAssetLabel('')
+    setCharacterName('')
+    setAssetNotes('')
+  }
+
+  return (
+    <section className="space-y-5 rounded-lg border border-white/[0.08] bg-white/[0.025] p-4">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[color:var(--color-accent)]">Working project page</p>
+          <h2 className="mt-1 font-display text-3xl italic text-zinc-50">{project.title}</h2>
+          <p className="mt-2 text-sm leading-6 text-zinc-400">
+            Approved look, character references, cinematic shot grids, selected frames, then Comfy refinement.
+          </p>
+          {hero ? (
+            <div className="mt-4 overflow-hidden rounded-md border border-white/[0.08] bg-black">
+              <img
+                src={hero.public_url || projectAssetUrl(project.project_id, hero.asset_path)}
+                alt={hero.label}
+                className="aspect-video w-full object-contain"
+              />
+            </div>
+          ) : null}
+        </div>
+
+        <Card className="border-white/[0.08] bg-black/20">
+          <CardHeader className="pb-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">Classify upload</p>
+            <CardTitle>Add project asset</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <select
+              value={assetType}
+              onChange={(event) => setAssetType(event.currentTarget.value as ProjectAsset['asset_type'])}
+              className="w-full rounded-sm border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none"
+            >
+              <option value="character_sheet">Character sheet — keep intact</option>
+              <option value="single_still">Single cinematic still — keep intact</option>
+              <option value="cinematic_shot_grid">Cinematic shot grid — eligible to split</option>
+              <option value="extracted_shot">Extracted shot frame</option>
+              <option value="refined_shot">Comfy refined shot</option>
+              <option value="other">Other / hold</option>
+            </select>
+            <input
+              value={assetLabel}
+              onChange={(event) => setAssetLabel(event.currentTarget.value)}
+              placeholder="Label, e.g. Juan model sheet"
+              className="w-full rounded-sm border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none"
+            />
+            {assetType === 'character_sheet' ? (
+              <input
+                value={characterName}
+                onChange={(event) => setCharacterName(event.currentTarget.value)}
+                placeholder="Character name"
+                className="w-full rounded-sm border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none"
+              />
+            ) : null}
+            <textarea
+              value={assetNotes}
+              onChange={(event) => setAssetNotes(event.currentTarget.value)}
+              rows={3}
+              placeholder="Continuity notes / next action"
+              className="w-full rounded-sm border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none"
+            />
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(event) => setAssetFile(event.currentTarget.files?.[0] ?? null)}
+              className="w-full text-xs text-zinc-400 file:mr-3 file:rounded-sm file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-xs file:text-zinc-200"
+            />
+            <Button type="button" onClick={submitAsset} disabled={!assetFile || isBusy} className="w-full">
+              {isBusy ? 'Adding asset…' : 'Add to project'}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <ProjectPanel title="Characters" eyebrow="Named cards above" empty="Upload character sheets here; they stay intact.">
+          {project.characters.map((character) => {
+            const sheet = project.assets.find((asset) => asset.asset_id === character.sheet_asset_id)
+            return sheet ? (
+              <a
+                key={character.character_id}
+                href={projectAssetUrl(project.project_id, sheet.asset_path)}
+                target="_blank"
+                rel="noreferrer"
+                className="block overflow-hidden rounded-md border border-white/[0.08] bg-black/30 transition hover:border-[color:var(--color-accent-line)]"
+              >
+                <img src={projectAssetUrl(project.project_id, sheet.asset_path)} alt={character.name} className="aspect-video w-full object-cover object-top" />
+                <span className="block p-3 text-sm font-medium text-zinc-100">{character.name}</span>
+              </a>
+            ) : null
+          })}
+          {sheets.length > project.characters.length ? <p className="text-xs text-zinc-500">{sheets.length - project.characters.length} sheet asset(s) waiting for names.</p> : null}
+        </ProjectPanel>
+
+        <ProjectPanel title="Cinematic shot grids" eyebrow="Sequential blocks" empty="Upload 3×3 grids here before splitting.">
+          {shotGrids.map((asset, index) => (
+            <div key={asset.asset_id} className="rounded-md border border-white/[0.08] bg-black/30 p-2">
+              <img src={projectAssetUrl(project.project_id, asset.asset_path)} alt={asset.label} className="aspect-video w-full rounded-sm object-cover" />
+              <p className="mt-2 text-xs text-zinc-300">Block {index + 1}: {asset.label}</p>
+              <p className="mt-1 text-[11px] text-zinc-600">Pending split + selection</p>
+            </div>
+          ))}
+        </ProjectPanel>
+
+        <ProjectPanel title="Shot sequence + Comfy" eyebrow="Next pass" empty="Selected frames and 1920×1080 refined stills will land here.">
+          {selectedShots.map((asset, index) => (
+            <div key={asset.asset_id} className="rounded-md border border-white/[0.08] bg-black/30 p-2">
+              <img src={projectAssetUrl(project.project_id, asset.asset_path)} alt={asset.label} className="aspect-video w-full rounded-sm object-cover" />
+              <p className="mt-2 text-xs text-zinc-300">#{index + 1} {asset.label}</p>
+            </div>
+          ))}
+        </ProjectPanel>
+      </div>
+    </section>
+  )
+}
+
+function ProjectPanel({ title, eyebrow, empty, children }: { title: string; eyebrow: string; empty: string; children: ReactNode }) {
+  const hasChildren = Array.isArray(children) ? children.some(Boolean) : Boolean(children)
+  return (
+    <section className="space-y-3 rounded-md border border-white/[0.08] bg-black/20 p-3">
+      <div>
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">{eyebrow}</p>
+        <h3 className="mt-1 text-lg font-medium text-zinc-50">{title}</h3>
+      </div>
+      {hasChildren ? children : <p className="rounded-sm border border-dashed border-white/[0.08] p-3 text-sm text-zinc-500">{empty}</p>}
+    </section>
+  )
+}
+
+function ProjectStrip({ projects }: { projects: ProjectSummary[] }) {
+  if (projects.length === 0) return null
+  return (
+    <section className="space-y-3 border-t border-white/[0.06] pt-5">
+      <div>
+        <h2 className="font-display text-2xl italic text-zinc-50">Project pages</h2>
+        <p className="mt-1 text-sm text-zinc-500">Approved looks that have moved into the trailer-building pipeline.</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {projects.map((project) => (
+          <div key={project.project_id} className="overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.02]">
+            {project.hero_asset_path ? (
+              <img src={project.hero_public_url || projectAssetUrl(project.project_id, project.hero_asset_path)} alt={project.title} className="aspect-video w-full object-cover" />
+            ) : null}
+            <div className="p-3">
+              <p className="truncate text-sm font-medium text-zinc-100">{project.title}</p>
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+                {project.asset_count} asset{project.asset_count === 1 ? '' : 's'} · {project.character_count} character{project.character_count === 1 ? '' : 's'}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function PendingReviewQueue({
   reviews,
   loadingReviewId,
@@ -429,7 +735,7 @@ function PendingReviewQueue({
   loadingReviewId: string | null
   onOpenReview: (reviewId: string) => void
 }) {
-  const pendingReviews = reviews.filter((review) => (review.pending_count ?? review.image_count) > 0)
+  const pendingReviews = sortReviewsNewest(reviews.filter(hasPendingImages))
 
   return (
     <section className="space-y-3 border border-[color:var(--color-accent-line)]/60 bg-[color:var(--color-accent-soft)]/20 p-4">
@@ -481,6 +787,8 @@ function ReviewHistory({
   loadingReviewId: string | null
   onOpenReview: (reviewId: string) => void
 }) {
+  const historyReviews = sortReviewsNewest(reviews.filter((review) => !hasPendingImages(review)))
+
   return (
     <section className="space-y-3 border-t border-white/[0.06] pt-5">
       <div className="flex items-baseline justify-between gap-4">
@@ -491,19 +799,19 @@ function ReviewHistory({
         <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">Newest first</p>
       </div>
 
-      {reviews.length === 0 ? (
-        <p className="text-sm text-zinc-500">No image reviews published yet.</p>
+      {historyReviews.length === 0 ? (
+        <p className="text-sm text-zinc-500">No completed image reviews yet. Approved, rejected, or published sets will appear here after they leave the pending queue.</p>
       ) : (
         <div className="divide-y divide-white/[0.06] overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.02]">
-          {reviews.map((review) => (
+          {historyReviews.map((review) => (
             <button
               key={review.review_id}
               type="button"
               onClick={() => onOpenReview(review.review_id)}
               aria-label={`View ${review.title || 'Untitled image review'}`}
-              className="grid w-full grid-cols-[72px_1fr_auto] items-center gap-3 p-2 text-left transition hover:bg-white/[0.04]"
+              className="grid w-full grid-cols-[56px_1fr_auto] items-center gap-2 px-2 py-1.5 text-left transition hover:bg-white/[0.04]"
             >
-              <ReviewCover review={review} className="aspect-video w-full rounded-sm object-cover" />
+              <ReviewCover review={review} className="aspect-video w-full rounded-sm object-contain" />
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium text-zinc-100">{review.title || 'Untitled image review'}</span>
                 {review.notes ? <span className="mt-0.5 block truncate text-xs text-zinc-500">{review.notes}</span> : null}
