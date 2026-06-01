@@ -189,6 +189,10 @@ class ProjectAsset(BaseModel):
     object_key: str | None = None
     public_url: str | None = None
     notes: str = ""
+    approval_status: str = "candidate"
+    source_asset_id: str | None = None
+    source_job_id: str | None = None
+    stack_lane: str | None = None
     created_at: datetime
 
 
@@ -274,6 +278,33 @@ class ProjectSummary(BaseModel):
 
 class ProjectResponse(BaseModel):
     project: ProjectManifest
+
+
+class ProjectStackReadout(BaseModel):
+    asset_count: int = 0
+    character_count: int = 0
+    shot_grid_count: int = 0
+    selected_count: int = 0
+    refined_count: int = 0
+    queued_refinement_count: int = 0
+    completed_refinement_count: int = 0
+    final_approved_count: int = 0
+    video_ready: bool = False
+    next_action: str = ""
+
+
+class ProjectLane(BaseModel):
+    lane_id: str
+    label: str
+    description: str
+    asset_ids: list[str]
+    count: int = 0
+
+
+class ProjectStackResponse(BaseModel):
+    project: ProjectManifest
+    readout: ProjectStackReadout
+    lanes: list[ProjectLane]
 
 
 class ProjectListResponse(BaseModel):

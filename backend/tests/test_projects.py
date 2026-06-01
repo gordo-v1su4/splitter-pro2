@@ -180,3 +180,68 @@ def test_project_refinement_queue_rejects_unknown_assets(tmp_path: Path, client:
     )
 
     assert response.status_code == 400
+
+
+def test_project_stack_endpoint_returns_dense_layout_readout_and_lanes(
+    tmp_path: Path,
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    review_id = create_published_review(tmp_path, client, monkeypatch)
+    project = client.post(f"/api/reviews/{review_id}/project").json()["project"]
+    project_id = project["project_id"]
+
+    character_sheet = make_png(tmp_path / "juan-sheet.png", (80, 160, 90))
+    character_response = client.post(
+        f"/api/projects/{project_id}/assets",
+        data={"asset_type": "character_sheet", "label": "Juan sheet", "character_name": "Juan"},
+        files={"file": ("juan-sheet.png", character_sheet, "image/png")},
+    )
+    assert character_response.status_code == 200
+
+    grid = make_png(tmp_path / "shot-grid.png", (20, 80, 140))
+    grid_response = client.post(
+        f"/api/projects/{project_id}/assets",
+        data={"asset_type": "cinematic_shot_grid", "label": "Opening grid"},
+        files={"file": ("shot-grid.png", grid, "image/png")},
+    )
+    assert grid_response.status_code == 200
+
+    refined = make_png(tmp_path / "refined-frame.png", (180, 180, 80))
+    refined_response = client.post(
+        f"/api/projects/{project_id}/assets",
+        data={"asset_type": "refined_shot", "label": "Final close-up"},
+        files={"file": ("refined-frame.png", refined, "image/png")},
+    )
+    assert refined_response.status_code == 200
+    refined_asset = next(asset for asset in refined_response.json()["project"]["assets"] if asset["filename"] == "refined-frame.png")
+
+    queue_response = client.post(
+        f"/api/projects/{project_id}/refinements",
+        json={"workflow_name": "comfyui_upscale", "input_asset_ids": [project["assets"][0]["asset_id"]]},
+    )
+    assert queue_response.status_code == 200
+
+    stack_response = client.get(f"/api/projects/{project_id}/stack")
+
+    assert stack_response.status_code == 200
+    payload = stack_response.json()
+    assert payload["project"]["project_id"] == project_id
+    assert payload["readout"] == {
+        "asset_count": 4,
+        "character_count": 1,
+        "shot_grid_count": 1,
+        "selected_count": 0,
+        "refined_count": 1,
+        "queued_refinement_count": 1,
+        "completed_refinement_count": 0,
+        "final_approved_count": 0,
+        "video_ready": False,
+        "next_action": "Finish queued refinement jobs.",
+    }
+    lanes = {lane["lane_id"]: lane for lane in payload["lanes"]}
+    assert lanes["look"]["count"] == 1
+    assert lanes["character"]["count"] == 1
+    assert lanes["grid"]["count"] == 1
+    assert lanes["refined"]["asset_ids"] == [refined_asset["asset_id"]]
+    assert lanes["final"]["count"] == 0

@@ -279,6 +279,10 @@ export interface ProjectAsset {
   object_key?: string | null
   public_url?: string | null
   notes: string
+  approval_status?: 'candidate' | 'needs_fix' | 'final_approved' | 'rejected' | string
+  source_asset_id?: string | null
+  source_job_id?: string | null
+  stack_lane?: string | null
   created_at: string
 }
 
@@ -336,6 +340,33 @@ export interface ProjectSummary {
   updated_at: string
 }
 
+export interface ProjectStackReadout {
+  asset_count: number
+  character_count: number
+  shot_grid_count: number
+  selected_count: number
+  refined_count: number
+  queued_refinement_count: number
+  completed_refinement_count: number
+  final_approved_count: number
+  video_ready: boolean
+  next_action: string
+}
+
+export interface ProjectLane {
+  lane_id: string
+  label: string
+  description: string
+  asset_ids: string[]
+  count: number
+}
+
+export interface ProjectStackResponse {
+  project: ProjectManifest
+  readout: ProjectStackReadout
+  lanes: ProjectLane[]
+}
+
 export async function createProjectFromReview(reviewId: string, title = ''): Promise<ProjectManifest> {
   const formData = new FormData()
   if (title.trim()) {
@@ -356,6 +387,11 @@ export async function fetchProject(projectId: string): Promise<ProjectManifest> 
   const response = await fetch(`/api/projects/${projectId}`)
   const payload = await parseResponse<{ project: ProjectManifest }>(response)
   return payload.project
+}
+
+export async function fetchProjectStack(projectId: string): Promise<ProjectStackResponse> {
+  const response = await fetch(`/api/projects/${projectId}/stack`)
+  return parseResponse<ProjectStackResponse>(response)
 }
 
 export async function addProjectAsset(

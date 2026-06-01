@@ -21,6 +21,7 @@ from .models import (
     ProjectListResponse,
     ProjectRefinementRequest,
     ProjectResponse,
+    ProjectStackResponse,
     ReviewListResponse,
     ReviewResponse,
     SheetsStubResponse,
@@ -351,6 +352,16 @@ def create_app() -> FastAPI:
     )
     def get_project_endpoint(project_id: str) -> ProjectResponse:
         return ProjectResponse(project=projects.get_project(project_id))
+
+    @app.get(
+        "/api/projects/{project_id}/stack",
+        response_model=ProjectStackResponse,
+        responses={404: {"model": ErrorResponse}},
+        tags=["Projects"],
+        summary="Read project stack lanes and dense layout readout",
+    )
+    def get_project_stack_endpoint(project_id: str) -> ProjectStackResponse:
+        return projects.get_project_stack(project_id)
 
     @app.post(
         "/api/projects/{project_id}/assets",

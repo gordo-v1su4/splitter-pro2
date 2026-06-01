@@ -230,6 +230,8 @@ describe('App', () => {
                   asset_path: 'assets/a.png',
                   public_url: 'https://s3.v1su4.dev/splitter/reviews/review-1/approved/a.png',
                   notes: 'Hero/look image created from the approved review publish step.',
+                  approval_status: 'candidate',
+                  stack_lane: null,
                   created_at: new Date().toISOString(),
                 },
               ],
@@ -240,6 +242,64 @@ describe('App', () => {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            project: {
+              project_id: 'project-1',
+              title: 'Smoke pass',
+              notes: 'Project note visible on page.',
+              status: 'active',
+              source_review_id: 'review-1',
+              hero_asset_id: 'asset-1',
+              assets: [
+                {
+                  asset_id: 'asset-1',
+                  source_kind: 'review_approved',
+                  asset_type: 'single_still',
+                  label: 'Approved project look',
+                  filename: 'a.png',
+                  width: 1280,
+                  height: 720,
+                  asset_path: 'assets/a.png',
+                  public_url: 'https://s3.v1su4.dev/splitter/reviews/review-1/approved/a.png',
+                  notes: 'Hero/look image created from the approved review publish step.',
+                  approval_status: 'candidate',
+                  stack_lane: null,
+                  created_at: new Date().toISOString(),
+                },
+              ],
+              characters: [],
+              shot_grids: [],
+              shot_frames: [],
+              refinement_jobs: [],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+            readout: {
+              asset_count: 1,
+              character_count: 0,
+              shot_grid_count: 0,
+              selected_count: 0,
+              refined_count: 0,
+              queued_refinement_count: 0,
+              completed_refinement_count: 0,
+              final_approved_count: 0,
+              video_ready: false,
+              next_action: 'Approve final frames for video prep.',
+            },
+            lanes: [
+              {
+                lane_id: 'look',
+                label: 'Approved look',
+                description: 'Published review images and single still references.',
+                asset_ids: ['asset-1'],
+                count: 1,
+              },
+            ],
           }),
         ),
       )
@@ -342,6 +402,10 @@ describe('App', () => {
     })
     expect(screen.getByText(/Working project page/i)).toBeInTheDocument()
     expect(screen.getByText(/Project note visible on page\./i)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/projects/project-1/stack')
+    })
+    expect(screen.getByText(/Approve final frames for video prep\./i)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /upscale all/i }))
     await waitFor(() => {

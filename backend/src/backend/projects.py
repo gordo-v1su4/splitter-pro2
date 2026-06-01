@@ -13,9 +13,12 @@ from .config import get_settings
 from .models import (
     ProjectAsset,
     ProjectCharacter,
+    ProjectLane,
     ProjectManifest,
     ProjectRefinementJob,
     ProjectRefinementRequest,
+    ProjectStackReadout,
+    ProjectStackResponse,
     ProjectSummary,
 )
 from .reviews import get_review, resolve_review_asset, sanitize_review_id
@@ -214,6 +217,68 @@ def list_projects() -> list[ProjectSummary]:
             )
         )
     return summaries
+
+
+def _lane(lane_id: str, label: str, description: str, asset_ids: list[str]) -> ProjectLane:
+    return ProjectLane(lane_id=lane_id, label=label, description=description, asset_ids=asset_ids, count=len(asset_ids))
+
+
+def build_project_stack(manifest: ProjectManifest) -> ProjectStackResponse:
+    look_ids = [
+        asset.asset_id
+        for asset in manifest.assets
+        if asset.stack_lane == "look" or asset.source_kind == "review_approved" or asset.asset_type == "single_still"
+    ]
+    character_ids = [asset.asset_id for asset in manifest.assets if asset.stack_lane == "character" or asset.asset_type == "character_sheet"]
+    grid_ids = [asset.asset_id for asset in manifest.assets if asset.stack_lane == "grid" or asset.asset_type == "cinematic_shot_grid"]
+    selected_ids = [asset.asset_id for asset in manifest.assets if asset.stack_lane == "selected" or asset.asset_type == "extracted_shot"]
+    refined_ids = [asset.asset_id for asset in manifest.assets if asset.stack_lane == "refined" or asset.asset_type == "refined_shot"]
+    final_ids = [asset.asset_id for asset in manifest.assets if asset.stack_lane == "final" or asset.approval_status == "final_approved"]
+
+    queued_refinement_count = sum(1 for job in manifest.refinement_jobs if job.status in {"queued", "processing"})
+    completed_refinement_count = sum(1 for job in manifest.refinement_jobs if job.status in {"accepted", "completed"})
+    final_approved_count = len(final_ids)
+    video_ready = final_approved_count > 0
+
+    if not manifest.assets:
+        next_action = "Add or publish project assets."
+    elif queued_refinement_count:
+        next_action = "Finish queued refinement jobs."
+    elif not final_approved_count:
+        next_action = "Approve final frames for video prep."
+    elif video_ready:
+        next_action = "Ready for video prep."
+    else:
+        next_action = "Continue project stack review."
+
+    lanes = [
+        _lane("look", "Approved look", "Published review images and single still references.", look_ids),
+        _lane("character", "Characters", "Intact character sheets for continuity.", character_ids),
+        _lane("grid", "Shot grids", "Cinematic shot-grid blocks before extraction.", grid_ids),
+        _lane("selected", "Selected shots", "Extracted frames selected for refinement or approval.", selected_ids),
+        _lane("refined", "Refined shots", "Upscaled or face-fixed ComfyUI result frames.", refined_ids),
+        _lane("final", "Video prep", "Final approved frames ready for video generation.", final_ids),
+    ]
+    return ProjectStackResponse(
+        project=manifest,
+        readout=ProjectStackReadout(
+            asset_count=len(manifest.assets),
+            character_count=len(manifest.characters),
+            shot_grid_count=len(grid_ids),
+            selected_count=len(selected_ids),
+            refined_count=len(refined_ids),
+            queued_refinement_count=queued_refinement_count,
+            completed_refinement_count=completed_refinement_count,
+            final_approved_count=final_approved_count,
+            video_ready=video_ready,
+            next_action=next_action,
+        ),
+        lanes=lanes,
+    )
+
+
+def get_project_stack(project_id: str) -> ProjectStackResponse:
+    return build_project_stack(get_project(project_id))
 
 
 def add_uploaded_asset(

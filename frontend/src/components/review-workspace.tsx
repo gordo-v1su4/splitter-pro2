@@ -6,6 +6,7 @@ import {
   createProjectFromReview,
   createReview,
   fetchProject,
+  fetchProjectStack,
   fetchReview,
   listProjects,
   listReviews,
@@ -16,6 +17,7 @@ import {
   reviewAssetUrl,
   type ProjectAsset,
   type ProjectManifest,
+  type ProjectStackResponse,
   type ProjectSummary,
   type ReviewManifest,
   type ReviewSummary,
@@ -31,6 +33,7 @@ export function ReviewWorkspace() {
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [activeReview, setActiveReview] = useState<ReviewManifest | null>(null)
   const [activeProject, setActiveProject] = useState<ProjectManifest | null>(null)
+  const [activeProjectStack, setActiveProjectStack] = useState<ProjectStackResponse | null>(null)
   const [isPublishing, setIsPublishing] = useState(false)
   const [reviewActionKey, setReviewActionKey] = useState<string | null>(null)
   const [loadingReviewId, setLoadingReviewId] = useState<string | null>(null)
@@ -134,13 +137,26 @@ export function ReviewWorkspace() {
     void runReviewAction('publish-approved', () => publishApprovedReviewImages(reviewId), 'Unable to publish approved images.')
   }
 
+  async function refreshProjectStack(projectId: string) {
+    try {
+      const stack = await fetchProjectStack(projectId)
+      setActiveProject(stack.project)
+      setActiveProjectStack(stack)
+      setProjects((current) => upsertProjectSummary(current, stack.project))
+    } catch {
+      setActiveProjectStack(null)
+    }
+  }
+
   async function createProject(reviewId: string) {
     setReviewActionKey('create-project')
     setError(null)
     try {
       const project = await createProjectFromReview(reviewId)
       setActiveProject(project)
+      setActiveProjectStack(null)
       setProjects((current) => upsertProjectSummary(current, project))
+      void refreshProjectStack(project.project_id)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to create project page.')
     } finally {
@@ -154,7 +170,9 @@ export function ReviewWorkspace() {
     try {
       const project = await fetchProject(projectId)
       setActiveProject(project)
+      setActiveProjectStack(null)
       setProjects((current) => upsertProjectSummary(current, project))
+      void refreshProjectStack(project.project_id)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to load project page.')
@@ -176,6 +194,7 @@ export function ReviewWorkspace() {
     try {
       const project = await addProjectAsset(activeProject.project_id, file, assetType, label, notes, characterName)
       setActiveProject(project)
+      setActiveProjectStack(null)
       setProjects((current) => upsertProjectSummary(current, project))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to add project asset.')
@@ -195,6 +214,7 @@ export function ReviewWorkspace() {
     try {
       const project = await queueProjectRefinement(activeProject.project_id, workflowName, assetIds, settingsJson)
       setActiveProject(project)
+      setActiveProjectStack(null)
       setProjects((current) => upsertProjectSummary(current, project))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to queue refinement.')
@@ -207,6 +227,7 @@ export function ReviewWorkspace() {
     return (
       <ProjectPage
         project={activeProject}
+        stack={activeProjectStack?.project.project_id === activeProject.project_id ? activeProjectStack : null}
         isBusy={reviewActionKey === 'add-project-asset' || Boolean(reviewActionKey?.startsWith('refine-'))}
         onAddAsset={addAssetToActiveProject}
         onQueueRefinement={(workflowName, assetIds, settingsJson) => void queueRefinement(workflowName, assetIds, settingsJson)}
@@ -629,12 +650,14 @@ function ReviewGallery({
 
 function ProjectPage({
   project,
+  stack,
   isBusy,
   onAddAsset,
   onQueueRefinement,
   onBack,
 }: {
   project: ProjectManifest
+  stack: ProjectStackResponse | null
   isBusy: boolean
   onAddAsset: (file: File, assetType: ProjectAsset['asset_type'], label: string, notes: string, characterName: string) => void
   onQueueRefinement: (
@@ -656,6 +679,11 @@ function ProjectPage({
   const refinementCandidates = project.assets.filter((asset) => asset.asset_type === 'single_still' || asset.asset_type === 'extracted_shot' || asset.asset_type === 'refined_shot')
   const keptCount = project.refinement_jobs.filter((job) => job.workflow_name === 'keep_as_is').reduce((count, job) => count + job.input_asset_ids.length, 0)
   const comfyCount = project.refinement_jobs.filter((job) => job.workflow_name !== 'keep_as_is').reduce((count, job) => count + job.input_asset_ids.length, 0)
+  const readout = stack?.readout
+  const stackSelectedCount = readout?.selected_count ?? selectedShots.length
+  const stackQueuedCount = readout?.queued_refinement_count ?? project.refinement_jobs.filter((job) => job.status === 'queued' || job.status === 'processing').length
+  const stackFinalCount = readout?.final_approved_count ?? project.assets.filter((asset) => asset.approval_status === 'final_approved' || asset.stack_lane === 'final').length
+  const nextAction = readout?.next_action || 'Approved look, character references, cinematic shot grids, selected frames, then Comfy refinement. Far-away shots should route through crop / face replace / stitch before final video generation approval.'
   const latestRefinement = project.refinement_jobs.at(-1)
   const allAssetIds = refinementCandidates.map((asset) => asset.asset_id)
 
@@ -674,10 +702,10 @@ function ProjectPage({
         <aside className="w-full shrink-0 border-b border-[#181818] bg-[#0c0c0c] lg:w-56 lg:border-b-0 lg:border-r">
           <div className="flex items-center gap-2 border-b border-[#181818] px-3 py-[10px]">
             <div className="grid grid-cols-2 gap-[2px] shrink-0">
-              <div className="h-[7px] w-[7px] bg-[#e05c00]" />
+              <div className="h-[7px] w-[7px] bg-[#3a8a3a]" />
               <div className="h-[7px] w-[7px] bg-[#2a2a2a]" />
               <div className="h-[7px] w-[7px] bg-[#2a2a2a]" />
-              <div className="h-[7px] w-[7px] bg-[#e05c00]" />
+              <div className="h-[7px] w-[7px] bg-[#3a8a3a]" />
             </div>
             <div>
               <div className="text-[13px] font-semibold tracking-wide text-[#e0e0e0]">Project Studio</div>
@@ -687,15 +715,15 @@ function ProjectPage({
 
           <div className="grid grid-cols-2 gap-0 py-2 lg:block">
             {[
-              ['Overview', `${project.assets.length} assets`],
-              ['Characters', `${project.characters.length} cards`],
-              ['Shot grids', `${shotGrids.length} blocks`],
-              ['Refinement', `${project.refinement_jobs.length} jobs`],
+              ['Overview', `${readout?.asset_count ?? project.assets.length} assets`],
+              ['Characters', `${readout?.character_count ?? project.characters.length} cards`],
+              ['Shot grids', `${readout?.shot_grid_count ?? shotGrids.length} blocks`],
+              ['Refinement', `${stackQueuedCount} queued`],
               ['Approvals', `${keptCount} kept`],
-              ['Video prep', `${selectedShots.length} frames`],
+              ['Video prep', `${stackSelectedCount} frames`],
             ].map(([label, sub], index) => (
               <div key={label} className={`flex items-center text-left ${index === 0 ? 'bg-[#131313] text-[#e0e0e0]' : 'text-[#585858]'}`}>
-                <div className="mr-3 w-[2px] self-stretch" style={{ background: index === 0 ? '#e05c00' : 'transparent', minHeight: 34 }} />
+                <div className="mr-3 w-[2px] self-stretch" style={{ background: index === 0 ? '#3a8a3a' : 'transparent', minHeight: 34 }} />
                 <div className="py-[7px]">
                   <div className="text-[12px] font-medium leading-tight">{label}</div>
                   <div className="text-[10px] text-[#3a3a3a]">{sub}</div>
@@ -713,8 +741,8 @@ function ProjectPage({
               </span>
             </div>
             <Meter label="Keep" value={keptCount} max={Math.max(refinementCandidates.length, 1)} color="#3a8a3a" />
-            <Meter label="Comfy" value={comfyCount} max={Math.max(refinementCandidates.length, 1)} color="#e05c00" />
-            <Meter label="Finals" value={selectedShots.length} max={Math.max(project.assets.length, 1)} color="#6a5000" />
+            <Meter label="Comfy" value={comfyCount} max={Math.max(refinementCandidates.length, 1)} color="#4f9a4f" />
+            <Meter label="Finals" value={stackFinalCount} max={Math.max(project.assets.length, 1)} color="#6f7d64" />
             <div className="pt-1 font-mono text-[9px] text-[#2a2a2a]">QUEUE · FACE_FIX · UPSCALE · APPROVE</div>
           </div>
         </aside>
@@ -722,7 +750,7 @@ function ProjectPage({
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="flex shrink-0 items-center justify-between border-b border-[#181818] bg-[#0c0c0c] px-5 py-[8px]">
             <div className="flex min-w-0 items-center gap-3">
-              <button type="button" onClick={onBack} className="text-[10px] uppercase tracking-[0.22em] text-[#666] transition hover:text-[#e05c00]">
+              <button type="button" onClick={onBack} className="text-[10px] uppercase tracking-[0.22em] text-[#666] transition hover:text-[#3a8a3a]">
                 ← Reviews
               </button>
               <span className="text-[#222]">/</span>
@@ -777,11 +805,12 @@ function ProjectPage({
                       <div className="text-[9px] uppercase tracking-[0.22em] text-[#343434]">Working project page</div>
                       <h2 className="mt-1 text-[16px] font-semibold text-[#dcdcdc]">Continuity + next operator action</h2>
                     </div>
-                    <span className="rounded-[2px] border border-[#2a2118] bg-[#130d09] px-2 py-1 font-mono text-[10px] text-[#e05c00]">WORKING</span>
+                    <span className="rounded-[2px] border border-[#1f2f1f] bg-[#081008] px-2 py-1 font-mono text-[10px] text-[#3a8a3a]">WORKING</span>
                   </div>
                   <p className="min-h-20 rounded-[2px] border border-[#181818] bg-[#070707] p-3 text-sm leading-6 text-[#9a9a9a]">
-                    {project.notes || 'Approved look, character references, cinematic shot grids, selected frames, then Comfy refinement. Far-away shots should route through crop / face replace / stitch before final video generation approval.'}
+                    {nextAction}
                   </p>
+                  {project.notes ? <p className="mt-2 rounded-[2px] border border-[#181818] bg-[#080808] p-2 text-xs text-[#666]">{project.notes}</p> : null}
                   {latestRefinement ? (
                     <div className="mt-3 rounded-[2px] border border-[#1f2f1f] bg-[#081008] px-3 py-2 text-xs text-[#9ed29e]">
                       Latest: {formatRefinementWorkflow(latestRefinement.workflow_name)} {latestRefinement.status} · {latestRefinement.input_asset_ids.length} input{latestRefinement.input_asset_ids.length === 1 ? '' : 's'}
@@ -852,11 +881,11 @@ function ProjectPage({
                 <div className="mb-2 text-[9px] uppercase tracking-[0.22em] text-[#343434]">Live readout</div>
                 <div className="space-y-[5px]">
                   <ReadoutRow label="Manifest" value={project.project_id.slice(0, 8)} />
-                  <ReadoutRow label="Assets" value={project.assets.length} />
+                  <ReadoutRow label="Assets" value={readout?.asset_count ?? project.assets.length} />
                   <ReadoutRow label="Sheets" value={sheets.length} />
-                  <ReadoutRow label="Grids" value={shotGrids.length} />
-                  <ReadoutRow label="Selected" value={selectedShots.length} />
-                  <ReadoutRow label="Queued" value={project.refinement_jobs.length} />
+                  <ReadoutRow label="Grids" value={readout?.shot_grid_count ?? shotGrids.length} />
+                  <ReadoutRow label="Selected" value={stackSelectedCount} />
+                  <ReadoutRow label="Queued" value={stackQueuedCount} />
                 </div>
               </div>
 
@@ -890,7 +919,7 @@ function ProjectPage({
                     <div key={job.job_id} className="rounded-[2px] border border-[#181818] bg-[#080808] p-2">
                       <div className="flex items-center justify-between gap-2">
                         <span className="truncate text-[10px] text-[#777]">{formatRefinementWorkflow(job.workflow_name)}</span>
-                        <span className="font-mono text-[9px] text-[#e05c00]">{job.status}</span>
+                        <span className="font-mono text-[9px] text-[#3a8a3a]">{job.status}</span>
                       </div>
                       <div className="mt-1 font-mono text-[9px] text-[#333]">{job.input_asset_ids.length} in · {job.result_asset_ids.length} out</div>
                     </div>
@@ -901,9 +930,9 @@ function ProjectPage({
               <div className="p-3">
                 <div className="mb-2 text-[9px] uppercase tracking-[0.22em] text-[#343434]">Terminal</div>
                 <div className="space-y-[4px] font-mono text-[9px] leading-tight">
-                  <div><span className="text-[#e05c0099]">[ROUTE]</span> <span className="text-[#555]">awaiting operator image decisions</span></div>
-                  <div><span className="text-[#e05c0099]">[FACE]</span> <span className="text-[#444]">far shots → crop / replace / stitch</span></div>
-                  <div><span className="text-[#e05c0099]">[VIDEO]</span> <span className="text-[#444]">final approvals gate generation</span></div>
+                  <div><span className="text-[#3a8a3a99]">[ROUTE]</span> <span className="text-[#555]">awaiting operator image decisions</span></div>
+                  <div><span className="text-[#3a8a3a99]">[FACE]</span> <span className="text-[#444]">far shots → crop / replace / stitch</span></div>
+                  <div><span className="text-[#3a8a3a99]">[VIDEO]</span> <span className="text-[#444]">final approvals gate generation</span></div>
                   <div className="mt-1 animate-pulse text-[#2e2e2e]">&gt; WAITING_FOR_PROJECT_INPUT_</div>
                 </div>
               </div>
@@ -956,7 +985,7 @@ function AssetDecisionCard({
 
 function AssetMiniCard({ projectId, asset, title, subtitle }: { projectId: string; asset: ProjectAsset; title: string; subtitle: string }) {
   return (
-    <a href={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-[2px] border border-[#181818] bg-[#080808] transition hover:border-[#e05c00]/50">
+    <a href={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-[2px] border border-[#181818] bg-[#080808] transition hover:border-[#3a8a3a]/50">
       <img src={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} alt={asset.label} className="aspect-video w-full bg-black object-cover object-top" />
       <span className="block p-2">
         <span className="block truncate text-xs font-medium text-[#d8d8d8]">{title}</span>
@@ -984,7 +1013,7 @@ function Readout({ label, value }: { label: string; value: string | number }) {
   return (
     <div>
       <div className="text-[9px] uppercase tracking-[0.18em] text-[#303030]">{label}</div>
-      <div className="text-[12px] text-[#e05c00]">{value}</div>
+      <div className="text-[12px] text-[#3a8a3a]">{value}</div>
     </div>
   )
 }
@@ -993,7 +1022,7 @@ function ReadoutRow({ label, value }: { label: string; value: string | number })
   return (
     <div className="flex items-center justify-between">
       <span className="text-[10px] text-[#434343]">{label}</span>
-      <span className="font-mono text-[11px] text-[#e05c00]">{value}</span>
+      <span className="font-mono text-[11px] text-[#3a8a3a]">{value}</span>
     </div>
   )
 }
@@ -1049,7 +1078,7 @@ function ProjectStrip({
             key={project.project_id}
             type="button"
             onClick={() => onOpenProject(project.project_id)}
-            className="group overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.02] text-left transition hover:border-[#e05c00]/60 hover:bg-white/[0.04]"
+            className="group overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.02] text-left transition hover:border-[#3a8a3a]/60 hover:bg-white/[0.04]"
           >
             {project.hero_asset_path ? (
               <img src={project.hero_public_url || projectAssetUrl(project.project_id, project.hero_asset_path)} alt={project.title} className="aspect-video w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
