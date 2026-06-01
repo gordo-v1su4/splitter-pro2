@@ -11,9 +11,14 @@ services:
     environment:
       SPLITTER_ALLOWED_ORIGINS: '["https://splitter.serving.cloud","http://splitter.serving.cloud","https://serving.cloud","http://serving.cloud","https://www.serving.cloud","http://www.serving.cloud","http://localhost:8000","http://127.0.0.1:8000","http://localhost:5173","http://127.0.0.1:5173"]'
       SPLITTER_MEDIA_API_URL: ${SPLITTER_MEDIA_API_URL:-https://media.v1su4.dev}
-      SPLITTER_MEDIA_API_TOKEN: ${SPLITTER_MEDIA_API_TOKEN:-}
+      # Accept either app-specific vars or the RustFS/media-api vars from the server .env.
+      SPLITTER_MEDIA_API_TOKEN: ${SPLITTER_MEDIA_API_TOKEN:-${MEDIA_API_TOKEN:-}}
       SPLITTER_REVIEW_STORAGE_BUCKET: ${SPLITTER_REVIEW_STORAGE_BUCKET:-splitter}
       SPLITTER_REVIEW_STORAGE_PREFIX: ${SPLITTER_REVIEW_STORAGE_PREFIX:-reviews}
+      SPLITTER_S3_ENDPOINT: ${SPLITTER_S3_ENDPOINT:-${RUSTFS_PUBLIC_BASE_URL:-https://s3.v1su4.dev}}
+      SPLITTER_S3_ACCESS_KEY_ID: ${SPLITTER_S3_ACCESS_KEY_ID:-${RUSTFS_ACCESS_KEY:-}}
+      SPLITTER_S3_SECRET_ACCESS_KEY: ${SPLITTER_S3_SECRET_ACCESS_KEY:-${RUSTFS_SECRET_KEY:-}}
+      SPLITTER_S3_REGION: ${SPLITTER_S3_REGION:-${RUSTFS_REGION:-us-east-1}}
     volumes:
       - splitter_data:/app/data
     labels:
