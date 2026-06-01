@@ -106,16 +106,16 @@ function App() {
   const hasActiveWork = job !== null
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#0a0a0b] text-zinc-100">
+    <main className="relative h-screen overflow-hidden bg-[#070707] text-zinc-100">
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[360px] opacity-60"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[360px] opacity-50"
         style={{
           background:
             'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(100, 115, 90, 0.06), transparent 60%)',
         }}
       />
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.025]"
+        className="pointer-events-none absolute inset-0 opacity-[0.02]"
         style={{
           backgroundImage:
             'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
@@ -123,92 +123,152 @@ function App() {
         }}
       />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-6 lg:px-10">
-        <TopNav activeTab={workspace} onSelectTab={setWorkspace} />
+      <div className="relative flex h-screen w-full overflow-hidden">
+        <StudioSidebar activeTab={workspace} onSelectTab={setWorkspace} />
+        <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <WorkspaceHeader activeTab={workspace} job={job} manifest={manifest} reviewsHref="/docs" />
+          <div className="min-h-0 flex-1 overflow-y-auto bg-[#080808] p-4">
+            {workspace === 'image' ? (
+              <ImageSplitWorkspace />
+            ) : workspace === 'review' ? (
+              <ReviewWorkspace />
+            ) : (
+              <div className="mx-auto w-full max-w-[1680px]">
+                {hasActiveWork ? <HeroCompact /> : <HeroFull />}
 
-        {workspace === 'image' ? (
-          <ImageSplitWorkspace />
-        ) : workspace === 'review' ? (
-          <ReviewWorkspace />
-        ) : (
-          <>
-            {hasActiveWork ? <HeroCompact /> : <HeroFull />}
+                <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)]">
+                  <UploadPanel
+                    isUploading={isUploading}
+                    onUpload={handleUpload}
+                    job={job}
+                    onReset={resetJob}
+                  />
+                  <JobStatusPanel job={job} error={error} manifest={manifest} />
+                </section>
 
-            <section className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-              <UploadPanel
-                isUploading={isUploading}
-                onUpload={handleUpload}
-                job={job}
-                onReset={resetJob}
-              />
-              <JobStatusPanel job={job} error={error} manifest={manifest} />
-            </section>
+                {manifest ? (
+                  <section className="mt-5 space-y-4">
+                    <ShotSequenceHeader manifest={manifest} onReset={resetJob} />
 
-            {manifest ? (
-              <section className="mt-8 space-y-5">
-                <ShotSequenceHeader manifest={manifest} onReset={resetJob} />
-
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {manifest.segments.map((segment) => (
-                    <SegmentCard key={segment.index} jobId={manifest.job_id} segment={segment} />
-                  ))}
-                </div>
-              </section>
-            ) : !hasActiveWork ? (
-              <EmptyShotSequence />
-            ) : null}
-          </>
-        )}
-
-        <Footer />
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+                      {manifest.segments.map((segment) => (
+                        <SegmentCard key={segment.index} jobId={manifest.job_id} segment={segment} />
+                      ))}
+                    </div>
+                  </section>
+                ) : !hasActiveWork ? (
+                  <EmptyShotSequence />
+                ) : null}
+              </div>
+            )}
+          </div>
+        </section>
       </div>
     </main>
   )
 }
 
-function TopNav({
+function StudioSidebar({
   activeTab,
   onSelectTab,
 }: {
   activeTab: WorkspaceTab
   onSelectTab: (tab: WorkspaceTab) => void
 }) {
-  const tabClassName = (tab: WorkspaceTab) =>
-    [
-      'rounded-sm px-3 py-1 font-mono text-[10px] uppercase tracking-[0.24em] transition',
-      activeTab === tab
-        ? 'border border-[color:var(--color-accent-line)] bg-[color:var(--color-accent-soft)] text-zinc-50'
-        : 'border border-transparent text-zinc-500 hover:text-zinc-200',
-    ].join(' ')
+  const modules: Array<{ tab: WorkspaceTab; label: string; sub: string }> = [
+    { tab: 'video', label: 'Video process', sub: 'detect · frames · sheet' },
+    { tab: 'image', label: 'Split grids', sub: 'image grids · crops' },
+    { tab: 'review', label: 'Reviews', sub: 'approve · route · project' },
+  ]
 
   return (
-    <nav className="flex flex-col gap-4 border-b border-white/[0.06] pb-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-3">
-        <div className="relative flex h-7 w-7 items-center justify-center">
-          <div className="absolute inset-0 rounded-sm border border-white/[0.12]" />
-          <div className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-[1px] bg-[color:var(--color-accent)]" />
+    <aside className="flex w-52 shrink-0 flex-col border-r border-[#181818] bg-[#0c0c0c]">
+      <div className="flex items-center gap-2 border-b border-[#181818] px-3 py-[10px]">
+        <div className="grid shrink-0 grid-cols-2 gap-[2px]">
+          <div className="h-[7px] w-[7px] bg-[#3a8a3a]" />
+          <div className="h-[7px] w-[7px] bg-[#2a2a2a]" />
+          <div className="h-[7px] w-[7px] bg-[#2a2a2a]" />
+          <div className="h-[7px] w-[7px] bg-[#3a8a3a]" />
         </div>
-        <div className="flex items-baseline gap-2 leading-none">
-          <span className="font-display text-xl italic tracking-tight text-zinc-50">Splitter</span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">Pro&nbsp;02</span>
+        <div className="min-w-0">
+          <div className="truncate text-[13px] font-semibold tracking-wide text-[#e0e0e0]">Splitter Studio</div>
+          <div className="text-[9px] uppercase tracking-[0.22em] text-[#3a3a3a]">Pro 02</div>
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.24em]">
-        <button type="button" className={tabClassName('video')} onClick={() => onSelectTab('video')}>
-          Video
-        </button>
-        <button type="button" className={tabClassName('image')} onClick={() => onSelectTab('image')}>
-          Image grids
-        </button>
-        <button type="button" className={tabClassName('review')} onClick={() => onSelectTab('review')}>
-          Reviews
-        </button>
-        <span className="hidden text-zinc-700 sm:inline">/</span>
-        <a className="text-zinc-500 transition-colors hover:text-zinc-200" href="/docs" rel="noreferrer">
+
+      <div className="flex-1 overflow-y-auto py-2">
+        <div className="mb-1 px-3 pt-1 text-[9px] uppercase tracking-[0.22em] text-[#343434]">Module Selection</div>
+        {modules.map((module) => {
+          const isActive = activeTab === module.tab
+          return (
+            <button
+              key={module.tab}
+              type="button"
+              onClick={() => onSelectTab(module.tab)}
+              className={`flex w-full items-center text-left transition-colors ${isActive ? 'bg-[#131313] text-[#e0e0e0]' : 'text-[#585858] hover:bg-[#101010] hover:text-[#9a9a9a]'}`}
+            >
+              <div className="mr-3 w-[2px] self-stretch" style={{ background: isActive ? '#3a8a3a' : 'transparent', minHeight: 38 }} />
+              <div className="py-[7px]">
+                <div className="text-[12px] font-medium leading-tight">{module.label}</div>
+                <div className="text-[10px] text-[#3a3a3a]">{module.sub}</div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="border-t border-[#181818] p-3">
+        <a className="block rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] uppercase tracking-[0.18em] text-[#555] transition hover:border-[#3a8a3a]/50 hover:text-[#3a8a3a]" href="/docs" rel="noreferrer">
           Swagger docs
         </a>
+        <div className="mt-3 space-y-[4px] font-mono text-[9px] leading-tight">
+          <div><span className="text-[#3a8a3a99]">[FLOW]</span> <span className="text-[#555]">upload → detect → sheet</span></div>
+          <div><span className="text-[#3a8a3a99]">[GRID]</span> <span className="text-[#444]">split before review</span></div>
+          <div><span className="text-[#3a8a3a99]">[REVIEW]</span> <span className="text-[#444]">approve → project</span></div>
+        </div>
       </div>
-    </nav>
+    </aside>
+  )
+}
+
+function WorkspaceHeader({
+  activeTab,
+  job,
+  manifest,
+  reviewsHref,
+}: {
+  activeTab: WorkspaceTab
+  job: JobState | null
+  manifest: JobManifest | null
+  reviewsHref: string
+}) {
+  const title = activeTab === 'video' ? 'Scene frame detection' : activeTab === 'image' ? 'Image grid splitter' : 'Review + project studio'
+  const status = activeTab === 'video'
+    ? manifest
+      ? `${manifest.segment_count} frames · contact sheet ready`
+      : job
+        ? job.status
+        : 'ready for source video'
+    : activeTab === 'image'
+      ? 'split uploaded grids into reviewable stills'
+      : 'image review, project stack, Comfy routing'
+
+  return (
+    <header className="flex shrink-0 items-center justify-between border-b border-[#181818] bg-[#0c0c0c] px-5 py-[8px]">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="truncate text-[12px] font-semibold uppercase tracking-[0.18em] text-[#d0d0d0]">{title}</span>
+        <span className="hidden border-l border-[#222] pl-3 text-[10px] uppercase tracking-[0.18em] text-[#3a8a3a] sm:inline">{status}</span>
+      </div>
+      <div className="flex items-center gap-4">
+        <span className="hidden items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-[#3a8a3a] sm:flex">
+          <span className="h-[5px] w-[5px] rounded-full bg-[#3a8a3a] dot-pulse" />
+          Main screen
+        </span>
+        <a className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#555] transition hover:text-[#3a8a3a]" href={reviewsHref} rel="noreferrer">
+          Docs
+        </a>
+      </div>
+    </header>
   )
 }
 
@@ -383,18 +443,6 @@ function Step({ index, title, body }: { index: string; title: string; body: stri
       <p className="font-display text-xl italic text-zinc-50">{title}</p>
       <p className="text-[12px] leading-5 text-zinc-500">{body}</p>
     </li>
-  )
-}
-
-function Footer() {
-  return (
-    <footer className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-white/[0.06] py-5 font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-600 sm:flex-row sm:items-center">
-      <span>FastAPI · React 19 · ffmpeg · PySceneDetect</span>
-      <span className="flex items-center gap-2">
-        <span className="h-1 w-1 rounded-full bg-[color:var(--color-accent)]" />
-        Local-first · No telemetry
-      </span>
-    </footer>
   )
 }
 

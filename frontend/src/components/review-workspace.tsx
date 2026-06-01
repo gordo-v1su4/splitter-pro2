@@ -697,9 +697,9 @@ function ProjectPage({
   }
 
   return (
-    <section className="-mx-6 mt-4 min-h-[calc(100vh-150px)] overflow-hidden rounded-lg border border-[#181818] bg-[#070707] text-[#d8d8d8] shadow-[0_24px_90px_rgba(0,0,0,0.4)] lg:-mx-10">
-      <div className="flex min-h-[calc(100vh-150px)] flex-col lg:flex-row">
-        <aside className="w-full shrink-0 border-b border-[#181818] bg-[#0c0c0c] lg:w-56 lg:border-b-0 lg:border-r">
+    <section className="mt-0 h-full min-h-[calc(100vh-112px)] overflow-hidden rounded-[3px] border border-[#181818] bg-[#070707] text-[#d8d8d8] shadow-[0_24px_90px_rgba(0,0,0,0.4)]">
+      <div className="flex h-full min-h-[calc(100vh-112px)] flex-col lg:flex-row">
+        <aside className="w-full shrink-0 border-b border-[#181818] bg-[#0c0c0c] lg:w-52 lg:border-b-0 lg:border-r">
           <div className="flex items-center gap-2 border-b border-[#181818] px-3 py-[10px]">
             <div className="grid grid-cols-2 gap-[2px] shrink-0">
               <div className="h-[7px] w-[7px] bg-[#3a8a3a]" />
@@ -766,9 +766,9 @@ function ProjectPage({
             </div>
           </header>
 
-          <div className="grid flex-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_240px]">
+          <div className="grid flex-1 overflow-hidden xl:grid-cols-[minmax(0,1fr)_224px]">
             <main className="min-w-0 overflow-y-auto bg-[#080808] p-4">
-              <div className="grid gap-4 xl:grid-cols-[minmax(420px,0.95fr)_minmax(360px,1.05fr)]">
+              <div className="grid gap-4 2xl:grid-cols-[minmax(520px,1.05fr)_minmax(380px,0.95fr)]">
                 <section className="overflow-hidden rounded-[3px] border border-[#181818] bg-[#0b0b0b]">
                   <div className="flex items-center justify-between border-b border-[#181818] px-3 py-2">
                     <div>
@@ -838,7 +838,7 @@ function ProjectPage({
                 {refinementCandidates.length === 0 ? (
                   <p className="m-3 rounded-[2px] border border-dashed border-[#181818] bg-[#080808] p-3 text-sm text-[#555]">No stills are ready for refinement routing yet.</p>
                 ) : (
-                  <div className="grid gap-px bg-[#181818] sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  <div className="grid gap-px bg-[#181818] sm:grid-cols-2 2xl:grid-cols-3 min-[1800px]:grid-cols-4">
                     {refinementCandidates.map((asset, index) => (
                       <AssetDecisionCard
                         key={asset.asset_id}
@@ -853,7 +853,7 @@ function ProjectPage({
                 )}
               </section>
 
-              <div className="mt-4 grid gap-4 xl:grid-cols-3">
+              <div className="mt-4 grid gap-4 2xl:grid-cols-3">
                 <ProjectPanel title="Characters" eyebrow="Named cards" empty="Upload character sheets here; they stay intact.">
                   {project.characters.map((character) => {
                     const sheet = project.assets.find((asset) => asset.asset_id === character.sheet_asset_id)
@@ -876,7 +876,7 @@ function ProjectPage({
               </div>
             </main>
 
-            <aside className="hidden overflow-y-auto border-l border-[#181818] bg-[#0c0c0c] lg:block">
+            <aside className="hidden overflow-y-auto border-l border-[#181818] bg-[#0c0c0c] xl:block">
               <div className="border-b border-[#181818] p-3">
                 <div className="mb-2 text-[9px] uppercase tracking-[0.22em] text-[#343434]">Live readout</div>
                 <div className="space-y-[5px]">
