@@ -352,6 +352,12 @@ export async function listProjects(): Promise<ProjectSummary[]> {
   return payload.projects
 }
 
+export async function fetchProject(projectId: string): Promise<ProjectManifest> {
+  const response = await fetch(`/api/projects/${projectId}`)
+  const payload = await parseResponse<{ project: ProjectManifest }>(response)
+  return payload.project
+}
+
 export async function addProjectAsset(
   projectId: string,
   file: File,

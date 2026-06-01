@@ -5,6 +5,7 @@ import {
   approveReviewImage,
   createProjectFromReview,
   createReview,
+  fetchProject,
   fetchReview,
   listProjects,
   listReviews,
@@ -147,6 +148,21 @@ export function ReviewWorkspace() {
     }
   }
 
+  async function openProject(projectId: string) {
+    setReviewActionKey(`open-project-${projectId}`)
+    setError(null)
+    try {
+      const project = await fetchProject(projectId)
+      setActiveProject(project)
+      setProjects((current) => upsertProjectSummary(current, project))
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to load project page.')
+    } finally {
+      setReviewActionKey(null)
+    }
+  }
+
   async function addAssetToActiveProject(
     file: File,
     assetType: ProjectAsset['asset_type'],
@@ -185,6 +201,18 @@ export function ReviewWorkspace() {
     } finally {
       setReviewActionKey(null)
     }
+  }
+
+  if (activeProject) {
+    return (
+      <ProjectPage
+        project={activeProject}
+        isBusy={reviewActionKey === 'add-project-asset' || Boolean(reviewActionKey?.startsWith('refine-'))}
+        onAddAsset={addAssetToActiveProject}
+        onQueueRefinement={(workflowName, assetIds, settingsJson) => void queueRefinement(workflowName, assetIds, settingsJson)}
+        onBack={() => setActiveProject(null)}
+      />
+    )
   }
 
   return (
@@ -273,16 +301,11 @@ export function ReviewWorkspace() {
         />
       ) : null}
 
-      {activeProject ? (
-        <ProjectPage
-          project={activeProject}
-          isBusy={reviewActionKey === 'add-project-asset' || Boolean(reviewActionKey?.startsWith('refine-'))}
-          onAddAsset={addAssetToActiveProject}
-          onQueueRefinement={(workflowName, assetIds, settingsJson) => void queueRefinement(workflowName, assetIds, settingsJson)}
-        />
-      ) : null}
-
-      <ProjectStrip projects={projects} />
+      <ProjectStrip
+        projects={projects}
+        loadingProjectId={reviewActionKey?.startsWith('open-project-') ? reviewActionKey.replace('open-project-', '') : null}
+        onOpenProject={(projectId) => void openProject(projectId)}
+      />
 
       <ReviewHistory reviews={reviews} loadingReviewId={loadingReviewId} onOpenReview={(reviewId) => void openReview(reviewId)} />
     </section>
@@ -609,6 +632,7 @@ function ProjectPage({
   isBusy,
   onAddAsset,
   onQueueRefinement,
+  onBack,
 }: {
   project: ProjectManifest
   isBusy: boolean
@@ -618,6 +642,7 @@ function ProjectPage({
     assetIds: string[],
     settingsJson?: Record<string, unknown>,
   ) => void
+  onBack: () => void
 }) {
   const [assetType, setAssetType] = useState<ProjectAsset['asset_type']>('character_sheet')
   const [assetFile, setAssetFile] = useState<File | null>(null)
@@ -629,7 +654,10 @@ function ProjectPage({
   const shotGrids = project.assets.filter((asset) => asset.asset_type === 'cinematic_shot_grid')
   const selectedShots = project.assets.filter((asset) => asset.asset_type === 'extracted_shot' || asset.asset_type === 'refined_shot')
   const refinementCandidates = project.assets.filter((asset) => asset.asset_type === 'single_still' || asset.asset_type === 'extracted_shot' || asset.asset_type === 'refined_shot')
+  const keptCount = project.refinement_jobs.filter((job) => job.workflow_name === 'keep_as_is').reduce((count, job) => count + job.input_asset_ids.length, 0)
+  const comfyCount = project.refinement_jobs.filter((job) => job.workflow_name !== 'keep_as_is').reduce((count, job) => count + job.input_asset_ids.length, 0)
   const latestRefinement = project.refinement_jobs.at(-1)
+  const allAssetIds = refinementCandidates.map((asset) => asset.asset_id)
 
   function submitAsset() {
     if (!assetFile) return
@@ -641,167 +669,341 @@ function ProjectPage({
   }
 
   return (
-    <section className="space-y-5 rounded-lg border border-white/[0.08] bg-white/[0.025] p-4">
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[color:var(--color-accent)]">Working project page</p>
-          <h2 className="mt-1 font-display text-3xl italic text-zinc-50">{project.title}</h2>
-          {project.notes ? (
-            <p className="mt-2 text-sm leading-6 text-zinc-400">{project.notes}</p>
-          ) : (
-            <p className="mt-2 text-sm leading-6 text-zinc-400">
-              Approved look, character references, cinematic shot grids, selected frames, then Comfy refinement.
-            </p>
-          )}
-          {hero ? (
-            <div className="mt-4 overflow-hidden rounded-md border border-white/[0.08] bg-black">
-              <img
-                src={hero.public_url || projectAssetUrl(project.project_id, hero.asset_path)}
-                alt={hero.label}
-                className="aspect-video w-full object-contain"
-              />
+    <section className="-mx-6 mt-4 min-h-[calc(100vh-150px)] overflow-hidden rounded-lg border border-[#181818] bg-[#070707] text-[#d8d8d8] shadow-[0_24px_90px_rgba(0,0,0,0.4)] lg:-mx-10">
+      <div className="flex min-h-[calc(100vh-150px)] flex-col lg:flex-row">
+        <aside className="w-full shrink-0 border-b border-[#181818] bg-[#0c0c0c] lg:w-56 lg:border-b-0 lg:border-r">
+          <div className="flex items-center gap-2 border-b border-[#181818] px-3 py-[10px]">
+            <div className="grid grid-cols-2 gap-[2px] shrink-0">
+              <div className="h-[7px] w-[7px] bg-[#e05c00]" />
+              <div className="h-[7px] w-[7px] bg-[#2a2a2a]" />
+              <div className="h-[7px] w-[7px] bg-[#2a2a2a]" />
+              <div className="h-[7px] w-[7px] bg-[#e05c00]" />
             </div>
-          ) : null}
-          <div className="mt-4 rounded-md border border-white/[0.08] bg-black/25 p-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">Refinement routing</p>
-                <p className="mt-1 text-sm text-zinc-400">
-                  Keep usable stills as-is, or queue ComfyUI upscale / face-fix passes before final video approval.
-                </p>
+            <div>
+              <div className="text-[13px] font-semibold tracking-wide text-[#e0e0e0]">Project Studio</div>
+              <div className="text-[9px] uppercase tracking-[0.22em] text-[#3a3a3a]">Image → Comfy → Video</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-0 py-2 lg:block">
+            {[
+              ['Overview', `${project.assets.length} assets`],
+              ['Characters', `${project.characters.length} cards`],
+              ['Shot grids', `${shotGrids.length} blocks`],
+              ['Refinement', `${project.refinement_jobs.length} jobs`],
+              ['Approvals', `${keptCount} kept`],
+              ['Video prep', `${selectedShots.length} frames`],
+            ].map(([label, sub], index) => (
+              <div key={label} className={`flex items-center text-left ${index === 0 ? 'bg-[#131313] text-[#e0e0e0]' : 'text-[#585858]'}`}>
+                <div className="mr-3 w-[2px] self-stretch" style={{ background: index === 0 ? '#e05c00' : 'transparent', minHeight: 34 }} />
+                <div className="py-[7px]">
+                  <div className="text-[12px] font-medium leading-tight">{label}</div>
+                  <div className="text-[10px] text-[#3a3a3a]">{sub}</div>
+                </div>
               </div>
-              <Button
-                type="button"
-                onClick={() => onQueueRefinement('comfyui_upscale', refinementCandidates.map((asset) => asset.asset_id), { scale: 2 })}
-                disabled={isBusy || refinementCandidates.length === 0}
-                className="w-full sm:w-auto"
-              >
-                Upscale all
-              </Button>
+            ))}
+          </div>
+
+          <div className="border-t border-[#181818] p-3 space-y-[7px]">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] uppercase tracking-[0.2em] text-[#353535]">Comfy route</span>
+              <span className="flex items-center gap-1 text-[9px] text-[#3a8a3a]">
+                <span className="h-[5px] w-[5px] rounded-full bg-[#3a8a3a] dot-pulse" />
+                READY
+              </span>
             </div>
-            {latestRefinement ? (
-              <p className="mt-3 rounded-sm border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2 text-xs text-emerald-100/90">
-                {formatRefinementWorkflow(latestRefinement.workflow_name)} {latestRefinement.status}
-              </p>
-            ) : null}
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {refinementCandidates.map((asset) => (
-                <div key={asset.asset_id} className="rounded-md border border-white/[0.08] bg-white/[0.025] p-2">
-                  <img
-                    src={asset.public_url || projectAssetUrl(project.project_id, asset.asset_path)}
-                    alt={asset.label}
-                    className="aspect-video w-full rounded-sm bg-black object-contain"
-                  />
-                  <p className="mt-2 truncate text-xs font-medium text-zinc-200">{asset.label}</p>
-                  <div className="mt-2 grid grid-cols-3 gap-1.5">
-                    <Button type="button" variant="secondary" size="sm" disabled={isBusy} onClick={() => onQueueRefinement('keep_as_is', [asset.asset_id])}>
-                      Keep
+            <Meter label="Keep" value={keptCount} max={Math.max(refinementCandidates.length, 1)} color="#3a8a3a" />
+            <Meter label="Comfy" value={comfyCount} max={Math.max(refinementCandidates.length, 1)} color="#e05c00" />
+            <Meter label="Finals" value={selectedShots.length} max={Math.max(project.assets.length, 1)} color="#6a5000" />
+            <div className="pt-1 font-mono text-[9px] text-[#2a2a2a]">QUEUE · FACE_FIX · UPSCALE · APPROVE</div>
+          </div>
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="flex shrink-0 items-center justify-between border-b border-[#181818] bg-[#0c0c0c] px-5 py-[8px]">
+            <div className="flex min-w-0 items-center gap-3">
+              <button type="button" onClick={onBack} className="text-[10px] uppercase tracking-[0.22em] text-[#666] transition hover:text-[#e05c00]">
+                ← Reviews
+              </button>
+              <span className="text-[#222]">/</span>
+              <span className="truncate text-[12px] font-semibold uppercase tracking-[0.18em] text-[#d0d0d0]">{project.title || 'Untitled project'}</span>
+              <span className="hidden border-l border-[#222] pl-3 text-[10px] text-[#3a3a3a] sm:inline">{project.status}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="hidden items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-[#3a8a3a] sm:flex">
+                <span className="h-[5px] w-[5px] rounded-full bg-[#3a8a3a] dot-pulse" />
+                Manifest synced
+              </span>
+              <span className="font-mono text-[11px] text-[#383838]">{new Date(project.updated_at).toLocaleDateString()}</span>
+            </div>
+          </header>
+
+          <div className="grid flex-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_240px]">
+            <main className="min-w-0 overflow-y-auto bg-[#080808] p-4">
+              <div className="grid gap-4 xl:grid-cols-[minmax(420px,0.95fr)_minmax(360px,1.05fr)]">
+                <section className="overflow-hidden rounded-[3px] border border-[#181818] bg-[#0b0b0b]">
+                  <div className="flex items-center justify-between border-b border-[#181818] px-3 py-2">
+                    <div>
+                      <div className="text-[9px] uppercase tracking-[0.22em] text-[#343434]">Approved look</div>
+                      <h1 className="mt-1 truncate text-[26px] font-semibold italic leading-none tracking-[-0.02em] text-[#f0f0f0]">{project.title || 'Untitled project'}</h1>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-right font-mono text-[10px]">
+                      <Readout label="Assets" value={project.assets.length} />
+                      <Readout label="Chars" value={project.characters.length} />
+                      <Readout label="Jobs" value={project.refinement_jobs.length} />
+                    </div>
+                  </div>
+                  <div className="bg-black">
+                    {hero ? (
+                      <img
+                        src={hero.public_url || projectAssetUrl(project.project_id, hero.asset_path)}
+                        alt={hero.label}
+                        className="aspect-video w-full object-contain"
+                      />
+                    ) : (
+                      <div className="flex aspect-video items-center justify-center text-[10px] uppercase tracking-[0.22em] text-[#333]">No hero selected</div>
+                    )}
+                  </div>
+                  <div className="grid border-t border-[#181818] sm:grid-cols-3">
+                    <InfoCell label="Source review" value={project.source_review_id?.slice(0, 8) ?? 'manual'} />
+                    <InfoCell label="Hero asset" value={hero?.label ?? 'none'} />
+                    <InfoCell label="Updated" value={new Date(project.updated_at).toLocaleTimeString()} />
+                  </div>
+                </section>
+
+                <section className="rounded-[3px] border border-[#181818] bg-[#0b0b0b] p-3">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[9px] uppercase tracking-[0.22em] text-[#343434]">Working project page</div>
+                      <h2 className="mt-1 text-[16px] font-semibold text-[#dcdcdc]">Continuity + next operator action</h2>
+                    </div>
+                    <span className="rounded-[2px] border border-[#2a2118] bg-[#130d09] px-2 py-1 font-mono text-[10px] text-[#e05c00]">WORKING</span>
+                  </div>
+                  <p className="min-h-20 rounded-[2px] border border-[#181818] bg-[#070707] p-3 text-sm leading-6 text-[#9a9a9a]">
+                    {project.notes || 'Approved look, character references, cinematic shot grids, selected frames, then Comfy refinement. Far-away shots should route through crop / face replace / stitch before final video generation approval.'}
+                  </p>
+                  {latestRefinement ? (
+                    <div className="mt-3 rounded-[2px] border border-[#1f2f1f] bg-[#081008] px-3 py-2 text-xs text-[#9ed29e]">
+                      Latest: {formatRefinementWorkflow(latestRefinement.workflow_name)} {latestRefinement.status} · {latestRefinement.input_asset_ids.length} input{latestRefinement.input_asset_ids.length === 1 ? '' : 's'}
+                    </div>
+                  ) : null}
+                </section>
+              </div>
+
+              <section className="mt-4 rounded-[3px] border border-[#181818] bg-[#0b0b0b]">
+                <div className="flex flex-col gap-3 border-b border-[#181818] px-3 py-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <div className="text-[9px] uppercase tracking-[0.22em] text-[#343434]">Refinement routing</div>
+                    <h2 className="mt-1 text-[16px] font-semibold text-[#dcdcdc]">Keep / upscale / face-fix decision matrix</h2>
+                    <p className="mt-1 text-[11px] text-[#555]">Use Fix for far-away faces: crop, replace face, stitch back, then approve for video generation.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="secondary" size="sm" disabled={isBusy || allAssetIds.length === 0} onClick={() => onQueueRefinement('keep_as_is', allAssetIds)}>
+                      Keep all
                     </Button>
-                    <Button type="button" variant="secondary" size="sm" disabled={isBusy} onClick={() => onQueueRefinement('comfyui_upscale', [asset.asset_id], { scale: 2 })}>
-                      Upscale
-                    </Button>
-                    <Button type="button" variant="secondary" size="sm" disabled={isBusy} onClick={() => onQueueRefinement('comfyui_face_fix', [asset.asset_id], { crop_face: true })}>
-                      Fix
+                    <Button type="button" size="sm" disabled={isBusy || allAssetIds.length === 0} onClick={() => onQueueRefinement('comfyui_upscale', allAssetIds, { scale: 2 })}>
+                      Upscale all
                     </Button>
                   </div>
                 </div>
-              ))}
-            </div>
+                {refinementCandidates.length === 0 ? (
+                  <p className="m-3 rounded-[2px] border border-dashed border-[#181818] bg-[#080808] p-3 text-sm text-[#555]">No stills are ready for refinement routing yet.</p>
+                ) : (
+                  <div className="grid gap-px bg-[#181818] sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    {refinementCandidates.map((asset, index) => (
+                      <AssetDecisionCard
+                        key={asset.asset_id}
+                        asset={asset}
+                        projectId={project.project_id}
+                        index={index}
+                        isBusy={isBusy}
+                        onQueueRefinement={onQueueRefinement}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                <ProjectPanel title="Characters" eyebrow="Named cards" empty="Upload character sheets here; they stay intact.">
+                  {project.characters.map((character) => {
+                    const sheet = project.assets.find((asset) => asset.asset_id === character.sheet_asset_id)
+                    return sheet ? <AssetMiniCard key={character.character_id} projectId={project.project_id} asset={sheet} title={character.name} subtitle="Character sheet" /> : null
+                  })}
+                  {sheets.length > project.characters.length ? <p className="text-xs text-[#555]">{sheets.length - project.characters.length} sheet asset(s) waiting for names.</p> : null}
+                </ProjectPanel>
+
+                <ProjectPanel title="Cinematic shot grids" eyebrow="Sequential blocks" empty="Upload 3×3 grids here before splitting.">
+                  {shotGrids.map((asset, index) => (
+                    <AssetMiniCard key={asset.asset_id} projectId={project.project_id} asset={asset} title={`Block ${index + 1}`} subtitle={asset.label} />
+                  ))}
+                </ProjectPanel>
+
+                <ProjectPanel title="Shot sequence + Comfy" eyebrow="Final approvals" empty="Selected frames and 1920×1080 refined stills will land here.">
+                  {selectedShots.map((asset, index) => (
+                    <AssetMiniCard key={asset.asset_id} projectId={project.project_id} asset={asset} title={`#${index + 1} ${asset.label}`} subtitle={asset.asset_type === 'refined_shot' ? 'Refined' : 'Selected'} />
+                  ))}
+                </ProjectPanel>
+              </div>
+            </main>
+
+            <aside className="hidden overflow-y-auto border-l border-[#181818] bg-[#0c0c0c] lg:block">
+              <div className="border-b border-[#181818] p-3">
+                <div className="mb-2 text-[9px] uppercase tracking-[0.22em] text-[#343434]">Live readout</div>
+                <div className="space-y-[5px]">
+                  <ReadoutRow label="Manifest" value={project.project_id.slice(0, 8)} />
+                  <ReadoutRow label="Assets" value={project.assets.length} />
+                  <ReadoutRow label="Sheets" value={sheets.length} />
+                  <ReadoutRow label="Grids" value={shotGrids.length} />
+                  <ReadoutRow label="Selected" value={selectedShots.length} />
+                  <ReadoutRow label="Queued" value={project.refinement_jobs.length} />
+                </div>
+              </div>
+
+              <div className="border-b border-[#181818] p-3">
+                <div className="mb-2 text-[9px] uppercase tracking-[0.22em] text-[#343434]">Add project asset</div>
+                <div className="space-y-2">
+                  <select value={assetType} onChange={(event) => setAssetType(event.currentTarget.value as ProjectAsset['asset_type'])} className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-xs text-[#aaa] outline-none">
+                    <option value="character_sheet">Character sheet — intact</option>
+                    <option value="single_still">Single still — route</option>
+                    <option value="cinematic_shot_grid">Shot grid — split later</option>
+                    <option value="extracted_shot">Extracted shot frame</option>
+                    <option value="refined_shot">Comfy refined shot</option>
+                    <option value="other">Other / hold</option>
+                  </select>
+                  <input value={assetLabel} onChange={(event) => setAssetLabel(event.currentTarget.value)} placeholder="Asset label" className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-xs text-[#ddd] outline-none" />
+                  {assetType === 'character_sheet' ? (
+                    <input value={characterName} onChange={(event) => setCharacterName(event.currentTarget.value)} placeholder="Character name" className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-xs text-[#ddd] outline-none" />
+                  ) : null}
+                  <textarea value={assetNotes} onChange={(event) => setAssetNotes(event.currentTarget.value)} rows={3} placeholder="Continuity notes / next action" className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-xs text-[#ddd] outline-none" />
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setAssetFile(event.currentTarget.files?.[0] ?? null)} className="w-full text-[10px] text-[#555] file:mr-2 file:rounded-[2px] file:border-0 file:bg-[#181818] file:px-2 file:py-1.5 file:text-[10px] file:text-[#aaa]" />
+                  <Button type="button" onClick={submitAsset} disabled={!assetFile || isBusy} className="w-full">
+                    {isBusy ? 'Adding…' : 'Add asset'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="border-b border-[#181818] p-3">
+                <div className="mb-2 text-[9px] uppercase tracking-[0.22em] text-[#343434]">Refinement log</div>
+                <div className="space-y-[6px]">
+                  {project.refinement_jobs.length ? project.refinement_jobs.slice(-8).reverse().map((job) => (
+                    <div key={job.job_id} className="rounded-[2px] border border-[#181818] bg-[#080808] p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-[10px] text-[#777]">{formatRefinementWorkflow(job.workflow_name)}</span>
+                        <span className="font-mono text-[9px] text-[#e05c00]">{job.status}</span>
+                      </div>
+                      <div className="mt-1 font-mono text-[9px] text-[#333]">{job.input_asset_ids.length} in · {job.result_asset_ids.length} out</div>
+                    </div>
+                  )) : <p className="rounded-[2px] border border-dashed border-[#181818] bg-[#080808] p-3 text-[10px] text-[#444]">No ComfyUI routing decisions yet.</p>}
+                </div>
+              </div>
+
+              <div className="p-3">
+                <div className="mb-2 text-[9px] uppercase tracking-[0.22em] text-[#343434]">Terminal</div>
+                <div className="space-y-[4px] font-mono text-[9px] leading-tight">
+                  <div><span className="text-[#e05c0099]">[ROUTE]</span> <span className="text-[#555]">awaiting operator image decisions</span></div>
+                  <div><span className="text-[#e05c0099]">[FACE]</span> <span className="text-[#444]">far shots → crop / replace / stitch</span></div>
+                  <div><span className="text-[#e05c0099]">[VIDEO]</span> <span className="text-[#444]">final approvals gate generation</span></div>
+                  <div className="mt-1 animate-pulse text-[#2e2e2e]">&gt; WAITING_FOR_PROJECT_INPUT_</div>
+                </div>
+              </div>
+            </aside>
           </div>
         </div>
-
-        <Card className="border-white/[0.08] bg-black/20">
-          <CardHeader className="pb-2">
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">Classify upload</p>
-            <CardTitle>Add project asset</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <select
-              value={assetType}
-              onChange={(event) => setAssetType(event.currentTarget.value as ProjectAsset['asset_type'])}
-              className="w-full rounded-sm border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none"
-            >
-              <option value="character_sheet">Character sheet — keep intact</option>
-              <option value="single_still">Single cinematic still — keep intact</option>
-              <option value="cinematic_shot_grid">Cinematic shot grid — eligible to split</option>
-              <option value="extracted_shot">Extracted shot frame</option>
-              <option value="refined_shot">Comfy refined shot</option>
-              <option value="other">Other / hold</option>
-            </select>
-            <input
-              value={assetLabel}
-              onChange={(event) => setAssetLabel(event.currentTarget.value)}
-              placeholder="Label, e.g. Juan model sheet"
-              className="w-full rounded-sm border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none"
-            />
-            {assetType === 'character_sheet' ? (
-              <input
-                value={characterName}
-                onChange={(event) => setCharacterName(event.currentTarget.value)}
-                placeholder="Character name"
-                className="w-full rounded-sm border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none"
-              />
-            ) : null}
-            <textarea
-              value={assetNotes}
-              onChange={(event) => setAssetNotes(event.currentTarget.value)}
-              rows={3}
-              placeholder="Continuity notes / next action"
-              className="w-full rounded-sm border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none"
-            />
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              onChange={(event) => setAssetFile(event.currentTarget.files?.[0] ?? null)}
-              className="w-full text-xs text-zinc-400 file:mr-3 file:rounded-sm file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-xs file:text-zinc-200"
-            />
-            <Button type="button" onClick={submitAsset} disabled={!assetFile || isBusy} className="w-full">
-              {isBusy ? 'Adding asset…' : 'Add to project'}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <ProjectPanel title="Characters" eyebrow="Named cards above" empty="Upload character sheets here; they stay intact.">
-          {project.characters.map((character) => {
-            const sheet = project.assets.find((asset) => asset.asset_id === character.sheet_asset_id)
-            return sheet ? (
-              <a
-                key={character.character_id}
-                href={projectAssetUrl(project.project_id, sheet.asset_path)}
-                target="_blank"
-                rel="noreferrer"
-                className="block overflow-hidden rounded-md border border-white/[0.08] bg-black/30 transition hover:border-[color:var(--color-accent-line)]"
-              >
-                <img src={projectAssetUrl(project.project_id, sheet.asset_path)} alt={character.name} className="aspect-video w-full object-cover object-top" />
-                <span className="block p-3 text-sm font-medium text-zinc-100">{character.name}</span>
-              </a>
-            ) : null
-          })}
-          {sheets.length > project.characters.length ? <p className="text-xs text-zinc-500">{sheets.length - project.characters.length} sheet asset(s) waiting for names.</p> : null}
-        </ProjectPanel>
-
-        <ProjectPanel title="Cinematic shot grids" eyebrow="Sequential blocks" empty="Upload 3×3 grids here before splitting.">
-          {shotGrids.map((asset, index) => (
-            <div key={asset.asset_id} className="rounded-md border border-white/[0.08] bg-black/30 p-2">
-              <img src={projectAssetUrl(project.project_id, asset.asset_path)} alt={asset.label} className="aspect-video w-full rounded-sm object-cover" />
-              <p className="mt-2 text-xs text-zinc-300">Block {index + 1}: {asset.label}</p>
-              <p className="mt-1 text-[11px] text-zinc-600">Pending split + selection</p>
-            </div>
-          ))}
-        </ProjectPanel>
-
-        <ProjectPanel title="Shot sequence + Comfy" eyebrow="Next pass" empty="Selected frames and 1920×1080 refined stills will land here.">
-          {selectedShots.map((asset, index) => (
-            <div key={asset.asset_id} className="rounded-md border border-white/[0.08] bg-black/30 p-2">
-              <img src={projectAssetUrl(project.project_id, asset.asset_path)} alt={asset.label} className="aspect-video w-full rounded-sm object-cover" />
-              <p className="mt-2 text-xs text-zinc-300">#{index + 1} {asset.label}</p>
-            </div>
-          ))}
-        </ProjectPanel>
       </div>
     </section>
+  )
+}
+
+function AssetDecisionCard({
+  asset,
+  projectId,
+  index,
+  isBusy,
+  onQueueRefinement,
+}: {
+  asset: ProjectAsset
+  projectId: string
+  index: number
+  isBusy: boolean
+  onQueueRefinement: (
+    workflowName: 'keep_as_is' | 'comfyui_upscale' | 'comfyui_face_fix',
+    assetIds: string[],
+    settingsJson?: Record<string, unknown>,
+  ) => void
+}) {
+  return (
+    <div className="bg-[#0b0b0b] p-2">
+      <a href={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} target="_blank" rel="noreferrer" className="group block overflow-hidden rounded-[2px] border border-[#181818] bg-black">
+        <img src={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} alt={asset.label} className="aspect-video w-full object-contain transition duration-300 group-hover:scale-[1.015]" />
+      </a>
+      <div className="mt-2 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium text-[#d8d8d8]">{asset.label}</p>
+          <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-[#444]">#{index + 1} · {asset.width}×{asset.height}</p>
+        </div>
+        <span className="rounded-[2px] border border-[#181818] bg-[#080808] px-1.5 py-1 font-mono text-[9px] text-[#555]">{asset.asset_type}</span>
+      </div>
+      {asset.notes ? <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-[#666]">{asset.notes}</p> : null}
+      <div className="mt-2 grid grid-cols-3 gap-1.5">
+        <Button type="button" variant="secondary" size="sm" disabled={isBusy} onClick={() => onQueueRefinement('keep_as_is', [asset.asset_id])}>Keep</Button>
+        <Button type="button" variant="secondary" size="sm" disabled={isBusy} onClick={() => onQueueRefinement('comfyui_upscale', [asset.asset_id], { scale: 2 })}>Upscale</Button>
+        <Button type="button" variant="secondary" size="sm" disabled={isBusy} onClick={() => onQueueRefinement('comfyui_face_fix', [asset.asset_id], { crop_face: true, stitch_back: true })}>Fix</Button>
+      </div>
+    </div>
+  )
+}
+
+function AssetMiniCard({ projectId, asset, title, subtitle }: { projectId: string; asset: ProjectAsset; title: string; subtitle: string }) {
+  return (
+    <a href={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-[2px] border border-[#181818] bg-[#080808] transition hover:border-[#e05c00]/50">
+      <img src={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} alt={asset.label} className="aspect-video w-full bg-black object-cover object-top" />
+      <span className="block p-2">
+        <span className="block truncate text-xs font-medium text-[#d8d8d8]">{title}</span>
+        <span className="mt-0.5 block truncate font-mono text-[9px] uppercase tracking-[0.16em] text-[#444]">{subtitle}</span>
+      </span>
+    </a>
+  )
+}
+
+function Meter({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+  return (
+    <div>
+      <div className="mb-[3px] flex justify-between text-[10px]">
+        <span className="text-[#3a3a3a]">{label}</span>
+        <span className="font-mono" style={{ color }}>{value}</span>
+      </div>
+      <div className="h-[2px] rounded-full bg-[#181818]">
+        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, (value / Math.max(max, 1)) * 100)}%`, background: color }} />
+      </div>
+    </div>
+  )
+}
+
+function Readout({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div>
+      <div className="text-[9px] uppercase tracking-[0.18em] text-[#303030]">{label}</div>
+      <div className="text-[12px] text-[#e05c00]">{value}</div>
+    </div>
+  )
+}
+
+function ReadoutRow({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-[10px] text-[#434343]">{label}</span>
+      <span className="font-mono text-[11px] text-[#e05c00]">{value}</span>
+    </div>
+  )
+}
+
+function InfoCell({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="border-t border-[#181818] p-3 sm:border-l sm:border-t-0 first:sm:border-l-0">
+      <div className="text-[9px] uppercase tracking-[0.18em] text-[#303030]">{label}</div>
+      <div className="mt-1 truncate text-xs text-[#888]">{value}</div>
+    </div>
   )
 }
 
@@ -825,7 +1027,15 @@ function formatRefinementWorkflow(workflowName: string): string {
   return workflowName
 }
 
-function ProjectStrip({ projects }: { projects: ProjectSummary[] }) {
+function ProjectStrip({
+  projects,
+  loadingProjectId,
+  onOpenProject,
+}: {
+  projects: ProjectSummary[]
+  loadingProjectId: string | null
+  onOpenProject: (projectId: string) => void
+}) {
   if (projects.length === 0) return null
   return (
     <section className="space-y-3 border-t border-white/[0.06] pt-5">
@@ -835,17 +1045,25 @@ function ProjectStrip({ projects }: { projects: ProjectSummary[] }) {
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((project) => (
-          <div key={project.project_id} className="overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.02]">
+          <button
+            key={project.project_id}
+            type="button"
+            onClick={() => onOpenProject(project.project_id)}
+            className="group overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.02] text-left transition hover:border-[#e05c00]/60 hover:bg-white/[0.04]"
+          >
             {project.hero_asset_path ? (
-              <img src={project.hero_public_url || projectAssetUrl(project.project_id, project.hero_asset_path)} alt={project.title} className="aspect-video w-full object-cover" />
+              <img src={project.hero_public_url || projectAssetUrl(project.project_id, project.hero_asset_path)} alt={project.title} className="aspect-video w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
             ) : null}
-            <div className="p-3">
-              <p className="truncate text-sm font-medium text-zinc-100">{project.title}</p>
-              <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+            <span className="block p-3">
+              <span className="block truncate text-sm font-medium text-zinc-100">{project.title}</span>
+              <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
                 {project.asset_count} asset{project.asset_count === 1 ? '' : 's'} · {project.character_count} character{project.character_count === 1 ? '' : 's'}
-              </p>
-            </div>
-          </div>
+              </span>
+              <span className="mt-2 block text-xs font-medium text-[color:var(--color-accent)]">
+                {loadingProjectId === project.project_id ? 'Opening project…' : 'Open full project studio'}
+              </span>
+            </span>
+          </button>
         ))}
       </div>
     </section>
