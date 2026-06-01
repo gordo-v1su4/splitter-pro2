@@ -1,0 +1,38 @@
+name: Remote diagnostics
+
+on:
+  workflow_dispatch:
+
+jobs:
+  inspect-hostinger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect remote app env safely
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -eu
+            APP_PATH="${{ secrets.HOSTINGER_APP_PATH }}"
+            [ -z "$APP_PATH" ] && APP_PATH="/root/splitter-pro2"
+            cd "$APP_PATH"
+            echo "app_path=$APP_PATH"
+            echo "git_head=$(git rev-parse --short HEAD)"
+            echo "env_names_in_file:"
+            if [ -f .env ]; then
+              grep -E '^(SPLITTER_|MEDIA_API_|RUSTFS_|S3_)' .env | sed -E 's/=.*$/=<set>/' | sort || true
+            else
+              echo "missing .env"
+            fi
+            echo "compose_rendered_storage_env:"
+            docker compose config 2>/dev/null | grep -E 'SPLITTER_(MEDIA_API_TOKEN|S3_|REVIEW_STORAGE|MEDIA_API_URL)' | sed -E 's/(TOKEN|KEY_ID|SECRET_ACCESS_KEY): .*/\1: <rendered>/' || true
+            echo "container_storage_env:"
+            cid=$(docker compose ps -q splitter-pro2 || true)
+            if [ -n "$cid" ]; then
+              docker exec "$cid" sh -lc 'printenv | grep -E "^SPLITTER_(MEDIA_API_TOKEN|MEDIA_API_URL|S3_|REVIEW_STORAGE)=" | sed -E "s/(TOKEN|KEY_ID|SECRET_ACCESS_KEY)=.*/\1=<set>/" | sort' || true
+            else
+              echo "no container"
+            fi
