@@ -14,6 +14,8 @@ from .models import (
     ProjectAsset,
     ProjectCharacter,
     ProjectManifest,
+    ProjectRefinementJob,
+    ProjectRefinementRequest,
     ProjectSummary,
 )
 from .reviews import get_review, resolve_review_asset, sanitize_review_id
@@ -25,6 +27,11 @@ _ALLOWED_ASSET_TYPES = {
     "extracted_shot",
     "refined_shot",
     "other",
+}
+_ALLOWED_REFINEMENT_WORKFLOWS = {
+    "keep_as_is",
+    "comfyui_upscale",
+    "comfyui_face_fix",
 }
 _ALLOWED_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 
@@ -257,6 +264,43 @@ def add_uploaded_asset(
             )
         )
     manifest.updated_at = datetime.now(timezone.utc)
+    _write_manifest(workspace, manifest)
+    return manifest
+
+
+def queue_refinement(project_id: str, request: ProjectRefinementRequest) -> ProjectManifest:
+    workspace = project_workspace(sanitize_project_id(project_id))
+    if not _manifest_path(workspace).is_file():
+        raise HTTPException(status_code=404, detail="Project not found.")
+    workflow_name = request.workflow_name.strip()
+    if workflow_name not in _ALLOWED_REFINEMENT_WORKFLOWS:
+        raise HTTPException(status_code=400, detail="Unsupported refinement workflow.")
+    input_asset_ids = [asset_id.strip() for asset_id in request.input_asset_ids if asset_id.strip()]
+    reference_asset_ids = [asset_id.strip() for asset_id in request.reference_asset_ids if asset_id.strip()]
+    if not input_asset_ids:
+        raise HTTPException(status_code=400, detail="Select at least one project asset for refinement.")
+
+    manifest = _load_manifest(workspace)
+    known_asset_ids = {asset.asset_id for asset in manifest.assets}
+    missing = [asset_id for asset_id in [*input_asset_ids, *reference_asset_ids] if asset_id not in known_asset_ids]
+    if missing:
+        raise HTTPException(status_code=400, detail="Refinement request references an unknown project asset.")
+
+    now = datetime.now(timezone.utc)
+    manifest.refinement_jobs.append(
+        ProjectRefinementJob(
+            job_id=uuid4().hex,
+            input_asset_ids=input_asset_ids,
+            reference_asset_ids=reference_asset_ids,
+            workflow_name=workflow_name,
+            status="accepted" if workflow_name == "keep_as_is" else "queued",
+            result_asset_ids=input_asset_ids if workflow_name == "keep_as_is" else [],
+            settings_json=request.settings_json,
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    manifest.updated_at = now
     _write_manifest(workspace, manifest)
     return manifest
 

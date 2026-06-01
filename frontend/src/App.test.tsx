@@ -243,6 +243,54 @@ describe('App', () => {
           }),
         ),
       )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            project: {
+              project_id: 'project-1',
+              title: 'Smoke pass',
+              notes: 'Project note visible on page.',
+              status: 'active',
+              source_review_id: 'review-1',
+              hero_asset_id: 'asset-1',
+              assets: [
+                {
+                  asset_id: 'asset-1',
+                  source_kind: 'review_approved',
+                  asset_type: 'single_still',
+                  label: 'Approved project look',
+                  filename: 'a.png',
+                  width: 1280,
+                  height: 720,
+                  asset_path: 'assets/a.png',
+                  public_url: 'https://s3.v1su4.dev/splitter/reviews/review-1/approved/a.png',
+                  notes: 'Hero/look image created from the approved review publish step.',
+                  created_at: new Date().toISOString(),
+                },
+              ],
+              characters: [],
+              shot_grids: [],
+              shot_frames: [],
+              refinement_jobs: [
+                {
+                  job_id: 'refine-1',
+                  input_asset_ids: ['asset-1'],
+                  reference_asset_ids: [],
+                  workflow_name: 'comfyui_upscale',
+                  status: 'queued',
+                  result_asset_ids: [],
+                  settings_json: { scale: 2 },
+                  error: null,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                },
+              ],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          }),
+        ),
+      )
 
     render(<App />)
 
@@ -294,6 +342,21 @@ describe('App', () => {
     })
     expect(screen.getByText(/Working project page/i)).toBeInTheDocument()
     expect(screen.getByText(/Project note visible on page\./i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /upscale all/i }))
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/projects/project-1/refinements',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+    const refineRequest = fetchMock.mock.calls.find(([url]) => url === '/api/projects/project-1/refinements')
+    expect(JSON.parse(refineRequest?.[1]?.body as string)).toEqual({
+      workflow_name: 'comfyui_upscale',
+      input_asset_ids: ['asset-1'],
+      settings_json: { scale: 2 },
+    })
+    expect(screen.getByText(/ComfyUI upscale queued/i)).toBeInTheDocument()
   })
 
 

@@ -292,6 +292,19 @@ export interface ProjectCharacter {
   created_at: string
 }
 
+export interface ProjectRefinementJob {
+  job_id: string
+  input_asset_ids: string[]
+  reference_asset_ids: string[]
+  workflow_name: 'keep_as_is' | 'comfyui_upscale' | 'comfyui_face_fix' | string
+  status: string
+  result_asset_ids: string[]
+  settings_json: Record<string, unknown>
+  error?: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface ProjectManifest {
   project_id: string
   title: string
@@ -303,7 +316,7 @@ export interface ProjectManifest {
   characters: ProjectCharacter[]
   shot_grids: unknown[]
   shot_frames: unknown[]
-  refinement_jobs: unknown[]
+  refinement_jobs: ProjectRefinementJob[]
   created_at: string
   updated_at: string
 }
@@ -354,6 +367,25 @@ export async function addProjectAsset(
   formData.append('notes', notes)
   formData.append('character_name', characterName)
   const response = await fetch(`/api/projects/${projectId}/assets`, { method: 'POST', body: formData })
+  const payload = await parseResponse<{ project: ProjectManifest }>(response)
+  return payload.project
+}
+
+export async function queueProjectRefinement(
+  projectId: string,
+  workflowName: 'keep_as_is' | 'comfyui_upscale' | 'comfyui_face_fix',
+  inputAssetIds: string[],
+  settingsJson: Record<string, unknown> = {},
+): Promise<ProjectManifest> {
+  const response = await fetch(`/api/projects/${projectId}/refinements`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      workflow_name: workflowName,
+      input_asset_ids: inputAssetIds,
+      settings_json: settingsJson,
+    }),
+  })
   const payload = await parseResponse<{ project: ProjectManifest }>(response)
   return payload.project
 }

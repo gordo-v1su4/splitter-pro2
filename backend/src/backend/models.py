@@ -234,6 +234,13 @@ class ProjectRefinementJob(BaseModel):
     updated_at: datetime
 
 
+class ProjectRefinementRequest(BaseModel):
+    input_asset_ids: list[str]
+    reference_asset_ids: list[str] = []
+    workflow_name: str
+    settings_json: dict = Field(default_factory=dict)
+
+
 class ProjectManifest(BaseModel):
     project_id: str
     title: str

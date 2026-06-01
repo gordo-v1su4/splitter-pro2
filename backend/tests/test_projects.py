@@ -134,3 +134,49 @@ def test_project_upload_rejects_unknown_asset_type(tmp_path: Path, client: TestC
     )
 
     assert response.status_code == 400
+
+
+def test_project_refinement_queue_records_keep_upscale_and_fix_actions(
+    tmp_path: Path,
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    review_id = create_published_review(tmp_path, client, monkeypatch)
+    project = client.post(f"/api/reviews/{review_id}/project").json()["project"]
+    asset_id = project["assets"][0]["asset_id"]
+
+    keep = client.post(
+        f"/api/projects/{project['project_id']}/refinements",
+        json={"workflow_name": "keep_as_is", "input_asset_ids": [asset_id]},
+    )
+    upscale = client.post(
+        f"/api/projects/{project['project_id']}/refinements",
+        json={"workflow_name": "comfyui_upscale", "input_asset_ids": [asset_id], "settings_json": {"scale": 2}},
+    )
+    fix = client.post(
+        f"/api/projects/{project['project_id']}/refinements",
+        json={"workflow_name": "comfyui_face_fix", "input_asset_ids": [asset_id], "settings_json": {"crop_face": True}},
+    )
+
+    assert keep.status_code == 200
+    assert upscale.status_code == 200
+    assert fix.status_code == 200
+    updated = fix.json()["project"]
+    jobs = updated["refinement_jobs"]
+    assert [job["workflow_name"] for job in jobs] == ["keep_as_is", "comfyui_upscale", "comfyui_face_fix"]
+    assert jobs[0]["status"] == "accepted"
+    assert jobs[1]["status"] == "queued"
+    assert jobs[2]["status"] == "queued"
+    assert jobs[2]["settings_json"]["crop_face"] is True
+
+
+def test_project_refinement_queue_rejects_unknown_assets(tmp_path: Path, client: TestClient, monkeypatch) -> None:
+    review_id = create_published_review(tmp_path, client, monkeypatch)
+    project = client.post(f"/api/reviews/{review_id}/project").json()["project"]
+
+    response = client.post(
+        f"/api/projects/{project['project_id']}/refinements",
+        json={"workflow_name": "comfyui_upscale", "input_asset_ids": ["missing-asset"]},
+    )
+
+    assert response.status_code == 400

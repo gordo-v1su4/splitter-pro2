@@ -10,6 +10,7 @@ import {
   listReviews,
   projectAssetUrl,
   publishApprovedReviewImages,
+  queueProjectRefinement,
   rejectReviewImage,
   reviewAssetUrl,
   type ProjectAsset,
@@ -167,6 +168,25 @@ export function ReviewWorkspace() {
     }
   }
 
+  async function queueRefinement(
+    workflowName: 'keep_as_is' | 'comfyui_upscale' | 'comfyui_face_fix',
+    assetIds: string[],
+    settingsJson: Record<string, unknown> = {},
+  ) {
+    if (!activeProject || assetIds.length === 0) return
+    setReviewActionKey(`refine-${workflowName}`)
+    setError(null)
+    try {
+      const project = await queueProjectRefinement(activeProject.project_id, workflowName, assetIds, settingsJson)
+      setActiveProject(project)
+      setProjects((current) => upsertProjectSummary(current, project))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to queue refinement.')
+    } finally {
+      setReviewActionKey(null)
+    }
+  }
+
   return (
     <section className="mt-6 space-y-6">
       <header className="flex flex-col gap-3 border-b border-white/[0.06] pb-4 sm:flex-row sm:items-end sm:justify-between">
@@ -256,8 +276,9 @@ export function ReviewWorkspace() {
       {activeProject ? (
         <ProjectPage
           project={activeProject}
-          isBusy={reviewActionKey === 'add-project-asset'}
+          isBusy={reviewActionKey === 'add-project-asset' || Boolean(reviewActionKey?.startsWith('refine-'))}
           onAddAsset={addAssetToActiveProject}
+          onQueueRefinement={(workflowName, assetIds, settingsJson) => void queueRefinement(workflowName, assetIds, settingsJson)}
         />
       ) : null}
 
@@ -587,10 +608,16 @@ function ProjectPage({
   project,
   isBusy,
   onAddAsset,
+  onQueueRefinement,
 }: {
   project: ProjectManifest
   isBusy: boolean
   onAddAsset: (file: File, assetType: ProjectAsset['asset_type'], label: string, notes: string, characterName: string) => void
+  onQueueRefinement: (
+    workflowName: 'keep_as_is' | 'comfyui_upscale' | 'comfyui_face_fix',
+    assetIds: string[],
+    settingsJson?: Record<string, unknown>,
+  ) => void
 }) {
   const [assetType, setAssetType] = useState<ProjectAsset['asset_type']>('character_sheet')
   const [assetFile, setAssetFile] = useState<File | null>(null)
@@ -601,6 +628,8 @@ function ProjectPage({
   const sheets = project.assets.filter((asset) => asset.asset_type === 'character_sheet')
   const shotGrids = project.assets.filter((asset) => asset.asset_type === 'cinematic_shot_grid')
   const selectedShots = project.assets.filter((asset) => asset.asset_type === 'extracted_shot' || asset.asset_type === 'refined_shot')
+  const refinementCandidates = project.assets.filter((asset) => asset.asset_type === 'single_still' || asset.asset_type === 'extracted_shot' || asset.asset_type === 'refined_shot')
+  const latestRefinement = project.refinement_jobs.at(-1)
 
   function submitAsset() {
     if (!assetFile) return
@@ -633,6 +662,52 @@ function ProjectPage({
               />
             </div>
           ) : null}
+          <div className="mt-4 rounded-md border border-white/[0.08] bg-black/25 p-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">Refinement routing</p>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Keep usable stills as-is, or queue ComfyUI upscale / face-fix passes before final video approval.
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={() => onQueueRefinement('comfyui_upscale', refinementCandidates.map((asset) => asset.asset_id), { scale: 2 })}
+                disabled={isBusy || refinementCandidates.length === 0}
+                className="w-full sm:w-auto"
+              >
+                Upscale all
+              </Button>
+            </div>
+            {latestRefinement ? (
+              <p className="mt-3 rounded-sm border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2 text-xs text-emerald-100/90">
+                {formatRefinementWorkflow(latestRefinement.workflow_name)} {latestRefinement.status}
+              </p>
+            ) : null}
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {refinementCandidates.map((asset) => (
+                <div key={asset.asset_id} className="rounded-md border border-white/[0.08] bg-white/[0.025] p-2">
+                  <img
+                    src={asset.public_url || projectAssetUrl(project.project_id, asset.asset_path)}
+                    alt={asset.label}
+                    className="aspect-video w-full rounded-sm bg-black object-contain"
+                  />
+                  <p className="mt-2 truncate text-xs font-medium text-zinc-200">{asset.label}</p>
+                  <div className="mt-2 grid grid-cols-3 gap-1.5">
+                    <Button type="button" variant="secondary" size="sm" disabled={isBusy} onClick={() => onQueueRefinement('keep_as_is', [asset.asset_id])}>
+                      Keep
+                    </Button>
+                    <Button type="button" variant="secondary" size="sm" disabled={isBusy} onClick={() => onQueueRefinement('comfyui_upscale', [asset.asset_id], { scale: 2 })}>
+                      Upscale
+                    </Button>
+                    <Button type="button" variant="secondary" size="sm" disabled={isBusy} onClick={() => onQueueRefinement('comfyui_face_fix', [asset.asset_id], { crop_face: true })}>
+                      Fix
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <Card className="border-white/[0.08] bg-black/20">
@@ -741,6 +816,13 @@ function ProjectPanel({ title, eyebrow, empty, children }: { title: string; eyeb
       {hasChildren ? children : <p className="rounded-sm border border-dashed border-white/[0.08] p-3 text-sm text-zinc-500">{empty}</p>}
     </section>
   )
+}
+
+function formatRefinementWorkflow(workflowName: string): string {
+  if (workflowName === 'keep_as_is') return 'Keep as-is'
+  if (workflowName === 'comfyui_upscale') return 'ComfyUI upscale'
+  if (workflowName === 'comfyui_face_fix') return 'ComfyUI face fix'
+  return workflowName
 }
 
 function ProjectStrip({ projects }: { projects: ProjectSummary[] }) {

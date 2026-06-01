@@ -19,6 +19,7 @@ from .models import (
     JobState,
     JobStatus,
     ProjectListResponse,
+    ProjectRefinementRequest,
     ProjectResponse,
     ReviewListResponse,
     ReviewResponse,
@@ -367,6 +368,16 @@ def create_app() -> FastAPI:
         character_name: str = Form(""),
     ) -> ProjectResponse:
         return ProjectResponse(project=projects.add_uploaded_asset(project_id, file, asset_type, label, notes, character_name))
+
+    @app.post(
+        "/api/projects/{project_id}/refinements",
+        response_model=ProjectResponse,
+        responses={400: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+        tags=["Projects"],
+        summary="Queue project assets for keep-as-is, upscale, or ComfyUI face-fix handling",
+    )
+    def queue_project_refinement_endpoint(project_id: str, payload: ProjectRefinementRequest) -> ProjectResponse:
+        return ProjectResponse(project=projects.queue_refinement(project_id, payload))
 
     @app.get(
         "/api/projects/{project_id}/assets/{asset_path:path}",
