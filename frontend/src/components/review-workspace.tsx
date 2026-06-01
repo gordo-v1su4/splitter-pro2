@@ -352,10 +352,12 @@ function ReviewGallery({
 }) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [zoomScale, setZoomScale] = useState(1)
   const pendingImages = review.images.filter((image) => (image.approval_status ?? 'pending') === 'pending')
   const approvedCount = review.images.filter((image) => image.approval_status === 'approved').length
   const publishedCount = review.images.filter((image) => image.approval_status === 'published').length
   const selectedImage = review.images.find((image) => image.index === selectedIndex) ?? null
+  const selectedImageUrl = selectedImage ? selectedImage.public_url || reviewAssetUrl(review.review_id, selectedImage.asset_path) : ''
 
   useEffect(() => {
     if (!autoInspectToken) return
@@ -368,6 +370,7 @@ function ReviewGallery({
 
   function openImage(imageIndex: number) {
     setSelectedIndex(imageIndex)
+    setZoomScale(1)
     const image = review.images.find((candidate) => candidate.index === imageIndex)
     setRejectReason(image?.rejection_reason ?? '')
   }
@@ -375,6 +378,7 @@ function ReviewGallery({
   function closeImage() {
     setSelectedIndex(null)
     setRejectReason('')
+    setZoomScale(1)
   }
 
   return (
@@ -486,13 +490,49 @@ function ReviewGallery({
                 Close
               </button>
             </div>
-            <div className="grid gap-4 p-4 lg:grid-cols-[1fr_320px]">
-              <div className="flex min-h-[42vh] items-center justify-center rounded-lg bg-black/60 p-2">
+            <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="relative flex max-h-[82vh] min-h-[42vh] items-center justify-center overflow-auto rounded-lg bg-black/60 p-2">
                 <img
-                  src={selectedImage.public_url || reviewAssetUrl(review.review_id, selectedImage.asset_path)}
+                  src={selectedImageUrl}
                   alt={`${selectedImage.label} large preview`}
-                  className="max-h-[78vh] w-auto max-w-full object-contain"
+                  onDoubleClick={() => setZoomScale((current) => (current === 1 ? 2 : 1))}
+                  style={zoomScale > 1 ? { width: `${selectedImage.width * zoomScale}px` } : undefined}
+                  className={zoomScale > 1 ? 'h-auto max-w-none cursor-zoom-out object-contain' : 'max-h-[78vh] w-auto max-w-full cursor-zoom-in object-contain'}
                 />
+                <div className="absolute bottom-3 right-3 flex flex-wrap justify-end gap-2 rounded-full border border-white/10 bg-black/80 p-1.5 shadow-2xl backdrop-blur">
+                  <button
+                    type="button"
+                    onClick={() => setZoomScale(1)}
+                    aria-pressed={zoomScale === 1}
+                    className="rounded-full px-3 py-1 text-xs font-medium text-zinc-200 transition hover:bg-white/10 aria-pressed:bg-white/15"
+                  >
+                    Fit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoomScale(2)}
+                    aria-pressed={zoomScale === 2}
+                    className="rounded-full px-3 py-1 text-xs font-medium text-zinc-200 transition hover:bg-white/10 aria-pressed:bg-white/15"
+                  >
+                    2×
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoomScale(3)}
+                    aria-pressed={zoomScale === 3}
+                    className="rounded-full px-3 py-1 text-xs font-medium text-zinc-200 transition hover:bg-white/10 aria-pressed:bg-white/15"
+                  >
+                    3×
+                  </button>
+                  <a
+                    href={selectedImageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full px-3 py-1 text-xs font-medium text-[color:var(--color-accent)] transition hover:bg-white/10"
+                  >
+                    Open full size
+                  </a>
+                </div>
               </div>
               <aside className="space-y-4 rounded-lg border border-white/10 bg-white/[0.03] p-4">
                 <div className="space-y-1 text-sm text-zinc-400">
