@@ -136,29 +136,37 @@ def create_project_from_review(review_id: str, title: str | None = None) -> Proj
     workspace = project_workspace(project_id)
     workspace.mkdir(parents=True, exist_ok=True)
 
-    hero_image = published[0]
-    hero_source = resolve_review_asset(review.review_id, hero_image.asset_path)
-    hero_asset = _asset_from_file(
-        workspace=workspace,
-        source_path=hero_source,
-        filename=Path(hero_image.asset_path).name,
-        asset_type="single_still",
-        source_kind="review_approved",
-        label="Approved project look",
-        public_url=hero_image.public_url,
-        storage_bucket=hero_image.storage_bucket,
-        object_key=hero_image.object_key,
-        notes="Hero/look image created from the approved review publish step.",
-    )
+    project_assets: list[ProjectAsset] = []
+    for image_index, image in enumerate(published):
+        image_source = resolve_review_asset(review.review_id, image.asset_path)
+        project_assets.append(
+            _asset_from_file(
+                workspace=workspace,
+                source_path=image_source,
+                filename=Path(image.asset_path).name,
+                asset_type="single_still",
+                source_kind="review_approved",
+                label="Approved project look" if image_index == 0 else image.label,
+                public_url=image.public_url,
+                storage_bucket=image.storage_bucket,
+                object_key=image.object_key,
+                notes=(
+                    "Hero/look image created from the approved review publish step."
+                    if image_index == 0
+                    else "Approved image copied from the review publish step."
+                ),
+            )
+        )
 
     now = datetime.now(timezone.utc)
     manifest = ProjectManifest(
         project_id=project_id,
         title=(title or review.title or "Untitled visual project").strip(),
+        notes=review.notes.strip(),
         status="active",
         source_review_id=review.review_id,
-        hero_asset_id=hero_asset.asset_id,
-        assets=[hero_asset],
+        hero_asset_id=project_assets[0].asset_id,
+        assets=project_assets,
         characters=[],
         shot_grids=[],
         shot_frames=[],

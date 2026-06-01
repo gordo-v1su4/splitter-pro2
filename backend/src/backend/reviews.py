@@ -407,11 +407,15 @@ def publish_approved_review_images(review_id: str) -> ReviewManifest:
             review_id=manifest.review_id,
             folder_kind="approved",
         )
-        if remote_asset:
-            image.storage_bucket = remote_asset.get("bucket")
-            image.object_key = remote_asset.get("object_key")
-            image.public_url = remote_asset.get("public_url")
-            image.media_url = remote_asset.get("media_url")
+        if not remote_asset:
+            raise HTTPException(
+                status_code=502,
+                detail="Review storage is not configured; approved images were not published.",
+            )
+        image.storage_bucket = remote_asset.get("bucket")
+        image.object_key = remote_asset.get("object_key")
+        image.public_url = remote_asset.get("public_url")
+        image.media_url = remote_asset.get("media_url")
         image.approval_status = "published"
         changed = True
 

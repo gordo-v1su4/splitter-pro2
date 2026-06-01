@@ -617,9 +617,13 @@ function ProjectPage({
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[color:var(--color-accent)]">Working project page</p>
           <h2 className="mt-1 font-display text-3xl italic text-zinc-50">{project.title}</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
-            Approved look, character references, cinematic shot grids, selected frames, then Comfy refinement.
-          </p>
+          {project.notes ? (
+            <p className="mt-2 text-sm leading-6 text-zinc-400">{project.notes}</p>
+          ) : (
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              Approved look, character references, cinematic shot grids, selected frames, then Comfy refinement.
+            </p>
+          )}
           {hero ? (
             <div className="mt-4 overflow-hidden rounded-md border border-white/[0.08] bg-black">
               <img

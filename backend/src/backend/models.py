@@ -237,6 +237,7 @@ class ProjectRefinementJob(BaseModel):
 class ProjectManifest(BaseModel):
     project_id: str
     title: str
+    notes: str = ""
     status: str = "active"
     source_review_id: str | None = None
     hero_asset_id: str | None = None

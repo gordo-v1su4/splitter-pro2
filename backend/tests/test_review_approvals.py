@@ -101,6 +101,35 @@ def test_publish_approved_uploads_only_approved_images_to_approved_prefix(
     assert second_image["object_key"] is None
 
 
+def test_publish_approved_fails_without_configured_remote_storage(
+    tmp_path: Path,
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    def fake_upload_to_review_storage(**kwargs):
+        return None
+
+    monkeypatch.setattr("backend.reviews.upload_to_review_storage", fake_upload_to_review_storage)
+    image_bytes = make_png(tmp_path / "frame-001.png", (220, 80, 80))
+    create = client.post(
+        "/api/reviews",
+        data={"title": "Missing storage"},
+        files=[("files", ("frame-001.png", image_bytes, "image/png"))],
+    )
+    assert create.status_code == 200
+    review_id = create.json()["review"]["review_id"]
+    assert client.post(f"/api/reviews/{review_id}/images/1/approve").status_code == 200
+
+    published = client.post(f"/api/reviews/{review_id}/publish-approved")
+
+    assert published.status_code == 502
+    assert "storage is not configured" in published.json()["detail"]
+    persisted = client.get(f"/api/reviews/{review_id}")
+    assert persisted.json()["review"]["images"][0]["approval_status"] == "approved"
+    assert persisted.json()["review"]["images"][0]["object_key"] is None
+
+
+
 def test_reject_review_image_excludes_it_from_publish(
     tmp_path: Path,
     client: TestClient,

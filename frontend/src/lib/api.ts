@@ -295,6 +295,7 @@ export interface ProjectCharacter {
 export interface ProjectManifest {
   project_id: string
   title: string
+  notes: string
   status: string
   source_review_id?: string | null
   hero_asset_id?: string | null
