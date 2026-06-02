@@ -712,7 +712,7 @@ function ProjectPage({
       </header>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_224px]">
-        <main className="min-w-0 space-y-4">
+        <div className="min-w-0 space-y-4">
               <div className="grid gap-4 2xl:grid-cols-[minmax(520px,1.05fr)_minmax(380px,0.95fr)]">
                 <section className="overflow-hidden rounded-[3px] border border-[#181818] bg-[#0b0b0b]">
                   <div className="flex items-center justify-between border-b border-[#181818] px-3 py-2">
@@ -819,7 +819,7 @@ function ProjectPage({
                   ))}
                 </ProjectPanel>
               </div>
-            </main>
+            </div>
 
             <aside className="hidden overflow-y-auto border-l border-[#181818] bg-[#0c0c0c] xl:block">
               <div className="border-b border-[#181818] p-3">
