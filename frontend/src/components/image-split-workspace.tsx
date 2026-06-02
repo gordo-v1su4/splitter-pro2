@@ -197,15 +197,15 @@ export function ImageSplitWorkspace() {
               asChild
               size="sm"
               variant="secondary"
-              className="h-auto min-h-8 w-full cursor-pointer justify-start gap-3 border-dashed px-4 py-2.5 font-normal"
+              className="min-h-7 w-full cursor-pointer justify-start gap-2 border-dashed px-2.5 py-1.5 font-normal"
             >
               <label
                 htmlFor={uploadId}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={handleDrop}
-                className="flex cursor-pointer items-center gap-3"
+                className="flex cursor-pointer items-center gap-2"
               >
-                <ImageIcon className="h-4 w-4 shrink-0 text-[#777]" />
+                <ImageIcon className="h-3.5 w-3.5 shrink-0 text-[#777]" />
                 <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#aaa]">
                   {imageFiles.length ? 'Replace images' : 'Upload images'}
                 </span>

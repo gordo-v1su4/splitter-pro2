@@ -6,17 +6,17 @@ import { cn } from '../../lib/utils'
 
 const buttonVariants = cva(
   [
-    'inline-flex items-center justify-center gap-1.5 rounded-[2px] border font-medium uppercase tracking-[0.14em]',
+    'inline-flex items-center justify-center gap-1 rounded-[2px] border font-medium uppercase tracking-[0.12em]',
     'transition-colors duration-150 outline-none',
-    'focus-visible:ring-1 focus-visible:ring-[#e05c00] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0b]',
+    'focus-visible:ring-1 focus-visible:ring-[color:var(--color-accent)] focus-visible:ring-offset-1 focus-visible:ring-offset-[#0a0a0b]',
     'disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-[#2a2a2a] disabled:bg-[#2a2a2a] disabled:text-[#6a6a6a] disabled:opacity-100',
   ].join(' '),
   {
     variants: {
       variant: {
         primary: [
-          'border-[#e05c00] bg-[#e05c00] text-white',
-          'hover:border-[#c95200] hover:bg-[#c95200] active:bg-[#b34800]',
+          'border-[color:var(--color-accent)] bg-[color:var(--color-accent)] text-[#071007]',
+          'hover:border-[#83be78] hover:bg-[#83be78] active:bg-[#5e9655]',
         ].join(' '),
         secondary: [
           'border-[#2a2a2a] bg-transparent text-[#666]',
@@ -27,12 +27,12 @@ const buttonVariants = cva(
           'hover:border-[#2a2a2a] hover:bg-white/[0.03] hover:text-[#aaa]',
         ].join(' '),
         outline: [
-          'border-[#e05c00] bg-transparent text-[#e05c00]',
-          'hover:bg-[#e05c0012]',
+          'border-[color:var(--color-accent-line)] bg-transparent text-[color:var(--color-accent)]',
+          'hover:border-[color:var(--color-accent)] hover:bg-[color:var(--color-accent-soft)]',
         ].join(' '),
       },
       size: {
-        default: 'h-8 min-h-8 px-3 py-2 text-[10px] leading-none',
+        default: 'h-7 min-h-7 px-2.5 py-1 text-[9px] leading-none',
         sm: 'h-6 min-h-6 px-2 py-0 text-[9px] leading-none gap-1',
       },
     },

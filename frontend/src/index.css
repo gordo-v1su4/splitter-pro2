@@ -17,14 +17,14 @@
   --color-ink-800: #c4c4cc;
   --color-ink-900: #f4f4f5;
 
-  /* Muted utility accent — not neon; keeps chrome calm */
-  --color-accent: #6f7d64;
-  --color-accent-soft: rgba(111, 125, 100, 0.12);
-  --color-accent-line: rgba(111, 125, 100, 0.35);
+  /* Fatigue green action color sampled from the reference progress UI. */
+  --color-accent: #73ad68;
+  --color-accent-soft: rgba(115, 173, 104, 0.12);
+  --color-accent-line: rgba(115, 173, 104, 0.38);
 
   --color-warn: #f5b243;
   --color-fail: #f87171;
-  --color-ok: #6f7d64;
+  --color-ok: #73ad68;
 }
 
 :root {

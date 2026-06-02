@@ -384,7 +384,7 @@ function SectionTabs({
         aria-pressed={active === 'projects'}
         className={`rounded-[2px] border px-2.5 py-1.5 text-[9px] uppercase tracking-[0.14em] transition-colors ${
           active === 'projects'
-            ? 'border-[#e05c00] bg-[#e05c0014] text-[#e05c00]'
+            ? 'border-[color:var(--color-accent-line)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent)]'
             : 'border-[#242424] text-[#666] hover:border-[#444] hover:text-[#aaa]'
         }`}
       >
@@ -396,7 +396,7 @@ function SectionTabs({
         aria-pressed={active === 'reviews'}
         className={`rounded-[2px] border px-2.5 py-1.5 text-[9px] uppercase tracking-[0.14em] transition-colors ${
           active === 'reviews'
-            ? 'border-[#e05c00] bg-[#e05c0014] text-[#e05c00]'
+            ? 'border-[color:var(--color-accent-line)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent)]'
             : 'border-[#242424] text-[#666] hover:border-[#444] hover:text-[#aaa]'
         }`}
       >
@@ -623,7 +623,7 @@ function ReviewGallery({
               <button
                 type="button"
                 onClick={closeImage}
-                className="rounded-[2px] border border-[#181818] bg-white/[0.04] px-4 py-2 text-[12px] text-[#c0c0c0] transition hover:bg-white/[0.08]"
+                className="rounded-[2px] border border-[#181818] bg-white/[0.04] px-2.5 py-1.5 text-[10px] text-[#c0c0c0] transition hover:bg-white/[0.08]"
               >
                 Close
               </button>
@@ -1085,7 +1085,7 @@ function ProjectStrip({
         <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#343434]">No projects yet</p>
         <h2 className="mt-2 text-[16px] font-semibold text-[#e0e0e0]">Start from images, then create a project.</h2>
         <p className="mt-2 max-w-2xl text-[12px] leading-6 text-[#666]">Projects are working pages for approved looks, character sheets, shot grids, and Comfy routing. Upload images in Reviews first, publish the keepers, then create the project workspace.</p>
-        <button type="button" onClick={onOpenReviews} className="mt-4 rounded-[2px] border border-[#e05c00] px-3 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-[#e05c00] transition hover:bg-[#e05c0012]">
+        <button type="button" onClick={onOpenReviews} className="mt-4 rounded-[2px] border border-[color:var(--color-accent-line)] px-2.5 py-1.5 text-[9px] font-medium uppercase tracking-[0.12em] text-[color:var(--color-accent)] transition hover:border-[color:var(--color-accent)] hover:bg-[color:var(--color-accent-soft)]">
           Go to reviews / upload images
         </button>
       </section>
