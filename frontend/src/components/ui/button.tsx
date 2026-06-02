@@ -6,36 +6,34 @@ import { cn } from '../../lib/utils'
 
 const buttonVariants = cva(
   [
-    'inline-flex items-center justify-center gap-1.5 rounded-[2px] font-medium uppercase tracking-[0.14em]',
+    'inline-flex items-center justify-center gap-1.5 rounded-[2px] border font-medium uppercase tracking-[0.14em]',
     'transition-colors duration-150 outline-none',
-    'focus-visible:ring-1 focus-visible:ring-[color:var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0b]',
-    'disabled:pointer-events-none disabled:opacity-40',
+    'focus-visible:ring-1 focus-visible:ring-[#e05c00] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0b]',
+    'disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-[#2a2a2a] disabled:bg-[#2a2a2a] disabled:text-[#6a6a6a] disabled:opacity-100',
   ].join(' '),
   {
     variants: {
       variant: {
         primary: [
-          'bg-[color:var(--color-accent)] text-[#0a0a0b]',
-          'hover:bg-[#c4f06b]',
+          'border-[#e05c00] bg-[#e05c00] text-white',
+          'hover:border-[#c95200] hover:bg-[#c95200] active:bg-[#b34800]',
         ].join(' '),
         secondary: [
-          'border border-[#181818] bg-[#090909] text-[#c0c0c0]',
-          'hover:bg-white/[0.05] hover:border-white/[0.16] hover:text-[#e0e0e0]',
+          'border-[#2a2a2a] bg-transparent text-[#666]',
+          'hover:border-[#444] hover:bg-white/[0.03] hover:text-[#aaa]',
         ].join(' '),
         ghost: [
-          'text-[#777]',
-          'hover:bg-white/[0.04] hover:text-[#d4d4d4]',
+          'border-transparent bg-transparent text-[#666]',
+          'hover:border-[#2a2a2a] hover:bg-white/[0.03] hover:text-[#aaa]',
         ].join(' '),
         outline: [
-          'border border-white/[0.12] text-[#c0c0c0]',
-          'hover:bg-white/[0.04] hover:border-white/[0.24]',
+          'border-[#e05c00] bg-transparent text-[#e05c00]',
+          'hover:bg-[#e05c0012]',
         ].join(' '),
       },
       size: {
-        /* fixed height so padding/line-height can’t balloon the control */
         default: 'h-8 min-h-8 px-3 py-2 text-[10px] leading-none',
-        /* ~half of default — Process video, dense chrome */
-        sm: 'h-7 min-h-7 px-2.5 py-0 text-[10px] leading-none gap-1',
+        sm: 'h-6 min-h-6 px-2 py-0 text-[9px] leading-none gap-1',
       },
     },
     defaultVariants: {

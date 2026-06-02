@@ -9,10 +9,10 @@ import { UploadPanel } from './components/upload-panel'
 import { assetUrl, fetchJob, fetchJobResult, type JobManifest, type JobState, submitVideo } from './lib/api'
 import { formatDuration } from './lib/utils'
 
-type WorkspaceTab = 'video' | 'image' | 'review'
+type WorkspaceTab = 'projects' | 'reviews' | 'video' | 'image'
 
 function App() {
-  const [workspace, setWorkspace] = useState<WorkspaceTab>('review')
+  const [workspace, setWorkspace] = useState<WorkspaceTab>('projects')
   const [job, setJob] = useState<JobState | null>(null)
   const [manifest, setManifest] = useState<JobManifest | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -130,8 +130,12 @@ function App() {
           <div className="min-h-0 flex-1 overflow-y-auto bg-[#080808] p-4">
             {workspace === 'image' ? (
               <ImageSplitWorkspace />
-            ) : workspace === 'review' ? (
-              <ReviewWorkspace />
+            ) : workspace === 'projects' || workspace === 'reviews' ? (
+              <ReviewWorkspace
+                view={workspace}
+                onOpenProjects={() => setWorkspace('projects')}
+                onOpenReviews={() => setWorkspace('reviews')}
+              />
             ) : (
               <div className="mx-auto w-full max-w-[1680px]">
                 {hasActiveWork ? <HeroCompact /> : <HeroFull />}
@@ -176,9 +180,10 @@ function StudioSidebar({
   onSelectTab: (tab: WorkspaceTab) => void
 }) {
   const modules: Array<{ tab: WorkspaceTab; label: string; sub: string }> = [
+    { tab: 'projects', label: 'Projects', sub: 'overview · workspace' },
+    { tab: 'reviews', label: 'Reviews', sub: 'approve · publish' },
     { tab: 'video', label: 'Video process', sub: 'detect · frames · sheet' },
     { tab: 'image', label: 'Split grids', sub: 'image grids · crops' },
-    { tab: 'review', label: 'Reviews', sub: 'approve · route · project' },
   ]
 
   return (
@@ -225,6 +230,7 @@ function StudioSidebar({
           <div><span className="text-[#3a8a3a99]">[FLOW]</span> <span className="text-[#555]">upload → detect → sheet</span></div>
           <div><span className="text-[#3a8a3a99]">[GRID]</span> <span className="text-[#444]">split before review</span></div>
           <div><span className="text-[#3a8a3a99]">[REVIEW]</span> <span className="text-[#444]">approve → project</span></div>
+          <div><span className="text-[#3a8a3a99]">[PROJECT]</span> <span className="text-[#444]">open from left nav</span></div>
         </div>
       </div>
     </aside>
@@ -242,7 +248,7 @@ function WorkspaceHeader({
   manifest: JobManifest | null
   reviewsHref: string
 }) {
-  const title = activeTab === 'video' ? 'Scene frame detection' : activeTab === 'image' ? 'Image grid splitter' : 'Review + project studio'
+  const title = activeTab === 'video' ? 'Scene frame detection' : activeTab === 'image' ? 'Image grid splitter' : activeTab === 'projects' ? 'Projects workspace' : 'Reviews queue'
   const status = activeTab === 'video'
     ? manifest
       ? `${manifest.segment_count} frames · contact sheet ready`
@@ -251,7 +257,9 @@ function WorkspaceHeader({
         : 'ready for source video'
     : activeTab === 'image'
       ? 'split uploaded grids into reviewable stills'
-      : 'image review, project stack, Comfy routing'
+      : activeTab === 'projects'
+        ? 'overview, working pages, project stack'
+        : 'image approval, publishing, project creation'
 
   return (
     <header className="flex shrink-0 items-center justify-between border-b border-[#181818] bg-[#0c0c0c] px-5 py-[8px]">

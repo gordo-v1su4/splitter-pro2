@@ -358,9 +358,9 @@ describe('App', () => {
     render(<App />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: /reviews/i }))
-    expect(screen.getByRole('heading', { name: /projects/i })).toBeInTheDocument()
-    expect(screen.getByText(/open project pages first/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /reviews approve/i }))
+    expect(screen.getByRole('heading', { name: /^reviews$/i })).toBeInTheDocument()
+    expect(screen.getByText(/upload images for approval/i)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /history log/i })).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getAllByText(/Yesterday good takes/i).length).toBeGreaterThan(0)
@@ -504,7 +504,7 @@ describe('App', () => {
     render(<App />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: /reviews/i }))
+    await user.click(screen.getByRole('button', { name: /reviews approve/i }))
     const pendingButtons = await screen.findAllByRole('button', { name: /gen-x vampire 3x3 grids/i })
     await user.click(pendingButtons[0])
 

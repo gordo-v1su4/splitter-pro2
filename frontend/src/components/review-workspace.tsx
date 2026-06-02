@@ -25,7 +25,15 @@ import {
 import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 
-export function ReviewWorkspace() {
+export function ReviewWorkspace({
+  view,
+  onOpenProjects,
+  onOpenReviews,
+}: {
+  view: 'projects' | 'reviews'
+  onOpenProjects: () => void
+  onOpenReviews: () => void
+}) {
   const [title, setTitle] = useState('')
   const [notes, setNotes] = useState('')
   const [files, setFiles] = useState<File[]>([])
@@ -154,6 +162,7 @@ export function ReviewWorkspace() {
     try {
       const project = await createProjectFromReview(reviewId)
       setActiveProject(project)
+      onOpenProjects()
       setActiveProjectStack(null)
       setProjects((current) => upsertProjectSummary(current, project))
       void refreshProjectStack(project.project_id)
@@ -223,21 +232,25 @@ export function ReviewWorkspace() {
     }
   }
 
-  if (activeProject) {
-    return (
-      <ProjectPage
-        project={activeProject}
-        stack={activeProjectStack?.project.project_id === activeProject.project_id ? activeProjectStack : null}
-        isBusy={reviewActionKey === 'add-project-asset' || Boolean(reviewActionKey?.startsWith('refine-'))}
-        onAddAsset={addAssetToActiveProject}
-        onQueueRefinement={(workflowName, assetIds, settingsJson) => void queueRefinement(workflowName, assetIds, settingsJson)}
-        onBack={() => setActiveProject(null)}
-      />
-    )
-  }
+  if (view === 'projects') {
+    if (activeProject) {
+      return (
+        <ProjectPage
+          project={activeProject}
+          stack={activeProjectStack?.project.project_id === activeProject.project_id ? activeProjectStack : null}
+          isBusy={reviewActionKey === 'add-project-asset' || Boolean(reviewActionKey?.startsWith('refine-'))}
+          onAddAsset={addAssetToActiveProject}
+          onQueueRefinement={(workflowName, assetIds, settingsJson) => void queueRefinement(workflowName, assetIds, settingsJson)}
+          onOpenProjects={onOpenProjects}
+          onOpenReviews={onOpenReviews}
+          onShowOverview={() => setActiveProject(null)}
+        />
+      )
+    }
 
-  return (
-    <section className="mt-0 space-y-6">
+    return (
+      <section className="mt-0 space-y-6">
+        <SectionTabs active="projects" onOpenProjects={onOpenProjects} onOpenReviews={onOpenReviews} />
       <header className="flex flex-col gap-3 border-b border-[#181818] pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#343434]">Project overview</p>
@@ -255,7 +268,27 @@ export function ReviewWorkspace() {
         projects={projects}
         loadingProjectId={reviewActionKey?.startsWith('open-project-') ? reviewActionKey.replace('open-project-', '') : null}
         onOpenProject={(projectId) => void openProject(projectId)}
+        onOpenReviews={onOpenReviews}
       />
+    </section>
+    )
+  }
+
+  return (
+    <section className="mt-0 space-y-6">
+      <SectionTabs active="reviews" onOpenProjects={onOpenProjects} onOpenReviews={onOpenReviews} />
+      <header className="flex flex-col gap-3 border-b border-[#181818] pb-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#343434]">Review queue</p>
+          <h1 className="mt-2 text-[16px] font-semibold leading-tight text-[#e0e0e0]">Reviews</h1>
+          <p className="mt-2 max-w-2xl text-[12px] leading-6 text-[#777]">
+            Upload images for approval, publish the keepers, and create first-class project workspaces from the approved set.
+          </p>
+        </div>
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#343434]">
+          {reviews.length} saved review{reviews.length === 1 ? '' : 's'} · {projects.length} project{projects.length === 1 ? '' : 's'}
+        </p>
+      </header>
 
       <Card className="border-[#181818] bg-[#090909]">
         <CardHeader className="pb-2">
@@ -330,6 +363,46 @@ export function ReviewWorkspace() {
 
       <ReviewHistory reviews={reviews} loadingReviewId={loadingReviewId} onOpenReview={(reviewId) => void openReview(reviewId)} />
     </section>
+  )
+}
+
+
+function SectionTabs({
+  active,
+  onOpenProjects,
+  onOpenReviews,
+}: {
+  active: 'projects' | 'reviews'
+  onOpenProjects: () => void
+  onOpenReviews: () => void
+}) {
+  return (
+    <nav className="flex flex-wrap gap-1 border-b border-[#181818] pb-3" aria-label="Project and review sections">
+      <button
+        type="button"
+        onClick={onOpenProjects}
+        aria-pressed={active === 'projects'}
+        className={`rounded-[2px] border px-2.5 py-1.5 text-[9px] uppercase tracking-[0.14em] transition-colors ${
+          active === 'projects'
+            ? 'border-[#e05c00] bg-[#e05c0014] text-[#e05c00]'
+            : 'border-[#242424] text-[#666] hover:border-[#444] hover:text-[#aaa]'
+        }`}
+      >
+        Projects
+      </button>
+      <button
+        type="button"
+        onClick={onOpenReviews}
+        aria-pressed={active === 'reviews'}
+        className={`rounded-[2px] border px-2.5 py-1.5 text-[9px] uppercase tracking-[0.14em] transition-colors ${
+          active === 'reviews'
+            ? 'border-[#e05c00] bg-[#e05c0014] text-[#e05c00]'
+            : 'border-[#242424] text-[#666] hover:border-[#444] hover:text-[#aaa]'
+        }`}
+      >
+        Reviews
+      </button>
+    </nav>
   )
 }
 
@@ -654,7 +727,9 @@ function ProjectPage({
   isBusy,
   onAddAsset,
   onQueueRefinement,
-  onBack,
+  onOpenProjects,
+  onOpenReviews,
+  onShowOverview,
 }: {
   project: ProjectManifest
   stack: ProjectStackResponse | null
@@ -665,7 +740,9 @@ function ProjectPage({
     assetIds: string[],
     settingsJson?: Record<string, unknown>,
   ) => void
-  onBack: () => void
+  onOpenProjects: () => void
+  onOpenReviews: () => void
+  onShowOverview: () => void
 }) {
   const [assetType, setAssetType] = useState<ProjectAsset['asset_type']>('character_sheet')
   const [assetFile, setAssetFile] = useState<File | null>(null)
@@ -695,12 +772,18 @@ function ProjectPage({
 
   return (
     <section className="space-y-4 text-[#d8d8d8]">
+      <SectionTabs active="projects" onOpenProjects={onOpenProjects} onOpenReviews={onOpenReviews} />
       <header className="flex flex-col gap-3 border-b border-[#181818] pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <button type="button" onClick={onBack} className="mb-3 text-[10px] uppercase tracking-[0.22em] text-[#666] transition hover:text-[#3a8a3a]">
-            ← Project overview
-          </button>
-          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#343434]">Project page</p>
+          <div className="mb-3 flex flex-wrap gap-2">
+            <button type="button" onClick={onShowOverview} className="rounded-[2px] border border-[#242424] px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-[#777] transition hover:border-[#3a8a3a66] hover:text-[#3a8a3a]">
+              Projects overview
+            </button>
+            <button type="button" onClick={onOpenReviews} className="rounded-[2px] border border-[#242424] px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-[#777] transition hover:border-[#3a8a3a66] hover:text-[#3a8a3a]">
+              Reviews queue
+            </button>
+          </div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#343434]">Project workspace</p>
           <h1 className="mt-2 truncate text-[16px] font-semibold leading-tight text-[#e0e0e0]">{project.title || 'Untitled project'}</h1>
           <p className="mt-2 max-w-2xl text-[12px] leading-6 text-[#777]">Overview, continuity, routing, and approvals for this project. Reviews stay in the main left navigation instead of opening a second app shell.</p>
         </div>
@@ -989,12 +1072,25 @@ function ProjectStrip({
   projects,
   loadingProjectId,
   onOpenProject,
+  onOpenReviews,
 }: {
   projects: ProjectSummary[]
   loadingProjectId: string | null
   onOpenProject: (projectId: string) => void
+  onOpenReviews: () => void
 }) {
-  if (projects.length === 0) return null
+  if (projects.length === 0) {
+    return (
+      <section className="rounded-[2px] border border-dashed border-[#242424] bg-[#090909] p-5">
+        <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#343434]">No projects yet</p>
+        <h2 className="mt-2 text-[16px] font-semibold text-[#e0e0e0]">Start from images, then create a project.</h2>
+        <p className="mt-2 max-w-2xl text-[12px] leading-6 text-[#666]">Projects are working pages for approved looks, character sheets, shot grids, and Comfy routing. Upload images in Reviews first, publish the keepers, then create the project workspace.</p>
+        <button type="button" onClick={onOpenReviews} className="mt-4 rounded-[2px] border border-[#e05c00] px-3 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-[#e05c00] transition hover:bg-[#e05c0012]">
+          Go to reviews / upload images
+        </button>
+      </section>
+    )
+  }
   return (
     <section className="space-y-3 border-t border-[#181818] pt-5">
       <div>
