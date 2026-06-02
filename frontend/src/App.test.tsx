@@ -18,6 +18,8 @@ describe('App', () => {
 
   it('uploads a video and renders shot-sequence results', async () => {
     fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ reviews: [] })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ projects: [] })))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -99,8 +101,9 @@ describe('App', () => {
 
     render(<App />)
 
-    const fileInput = screen.getByLabelText(/choose an mp4/i)
     const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /video process/i }))
+    const fileInput = screen.getByLabelText(/choose an mp4/i)
     await user.upload(fileInput, new File(['video'], 'sample.mp4', { type: 'video/mp4' }))
     await user.click(screen.getByRole('button', { name: /process video/i }))
 
@@ -356,9 +359,9 @@ describe('App', () => {
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /reviews/i }))
-    expect(screen.getByRole('heading', { name: /image review/i })).toBeInTheDocument()
-    expect(screen.getByText(/publish generated images and why they matter/i)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /history/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /projects/i })).toBeInTheDocument()
+    expect(screen.getByText(/open project pages first/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /history log/i })).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getAllByText(/Yesterday good takes/i).length).toBeGreaterThan(0)
     })

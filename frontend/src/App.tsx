@@ -12,7 +12,7 @@ import { formatDuration } from './lib/utils'
 type WorkspaceTab = 'video' | 'image' | 'review'
 
 function App() {
-  const [workspace, setWorkspace] = useState<WorkspaceTab>('video')
+  const [workspace, setWorkspace] = useState<WorkspaceTab>('review')
   const [job, setJob] = useState<JobState | null>(null)
   const [manifest, setManifest] = useState<JobManifest | null>(null)
   const [error, setError] = useState<string | null>(null)

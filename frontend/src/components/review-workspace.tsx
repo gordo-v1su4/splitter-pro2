@@ -237,19 +237,25 @@ export function ReviewWorkspace() {
   }
 
   return (
-    <section className="mt-6 space-y-6">
+    <section className="mt-0 space-y-6">
       <header className="flex flex-col gap-3 border-b border-[#181818] pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#343434]">Image good / reasons</p>
-          <h1 className="mt-2 text-[16px] font-semibold leading-tight text-[#e0e0e0]">Image review</h1>
+          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#343434]">Project overview</p>
+          <h1 className="mt-2 text-[16px] font-semibold leading-tight text-[#e0e0e0]">Projects</h1>
           <p className="mt-2 max-w-2xl text-[12px] leading-6 text-[#777]">
-            Publish generated images and why they matter, then keep the review history visible below.
+            Open project pages first, then use the Reviews navigation on the left for image approval and routing.
           </p>
         </div>
         <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#343434]">
-          {reviews.length} saved review{reviews.length === 1 ? '' : 's'}
+          {projects.length} project{projects.length === 1 ? '' : 's'} · {reviews.length} saved review{reviews.length === 1 ? '' : 's'}
         </p>
       </header>
+
+      <ProjectStrip
+        projects={projects}
+        loadingProjectId={reviewActionKey?.startsWith('open-project-') ? reviewActionKey.replace('open-project-', '') : null}
+        onOpenProject={(projectId) => void openProject(projectId)}
+      />
 
       <Card className="border-[#181818] bg-[#090909]">
         <CardHeader className="pb-2">
@@ -321,12 +327,6 @@ export function ReviewWorkspace() {
           onCreateProject={(reviewId) => void createProject(reviewId)}
         />
       ) : null}
-
-      <ProjectStrip
-        projects={projects}
-        loadingProjectId={reviewActionKey?.startsWith('open-project-') ? reviewActionKey.replace('open-project-', '') : null}
-        onOpenProject={(projectId) => void openProject(projectId)}
-      />
 
       <ReviewHistory reviews={reviews} loadingReviewId={loadingReviewId} onOpenReview={(reviewId) => void openReview(reviewId)} />
     </section>
@@ -677,12 +677,9 @@ function ProjectPage({
   const shotGrids = project.assets.filter((asset) => asset.asset_type === 'cinematic_shot_grid')
   const selectedShots = project.assets.filter((asset) => asset.asset_type === 'extracted_shot' || asset.asset_type === 'refined_shot')
   const refinementCandidates = project.assets.filter((asset) => asset.asset_type === 'single_still' || asset.asset_type === 'extracted_shot' || asset.asset_type === 'refined_shot')
-  const keptCount = project.refinement_jobs.filter((job) => job.workflow_name === 'keep_as_is').reduce((count, job) => count + job.input_asset_ids.length, 0)
-  const comfyCount = project.refinement_jobs.filter((job) => job.workflow_name !== 'keep_as_is').reduce((count, job) => count + job.input_asset_ids.length, 0)
   const readout = stack?.readout
   const stackSelectedCount = readout?.selected_count ?? selectedShots.length
   const stackQueuedCount = readout?.queued_refinement_count ?? project.refinement_jobs.filter((job) => job.status === 'queued' || job.status === 'processing').length
-  const stackFinalCount = readout?.final_approved_count ?? project.assets.filter((asset) => asset.approval_status === 'final_approved' || asset.stack_lane === 'final').length
   const nextAction = readout?.next_action || 'Approved look, character references, cinematic shot grids, selected frames, then Comfy refinement. Far-away shots should route through crop / face replace / stitch before final video generation approval.'
   const latestRefinement = project.refinement_jobs.at(-1)
   const allAssetIds = refinementCandidates.map((asset) => asset.asset_id)
@@ -697,77 +694,25 @@ function ProjectPage({
   }
 
   return (
-    <section className="mt-0 h-full min-h-[calc(100vh-112px)] overflow-hidden rounded-[3px] border border-[#181818] bg-[#070707] text-[#d8d8d8] shadow-[0_24px_90px_rgba(0,0,0,0.4)]">
-      <div className="flex h-full min-h-[calc(100vh-112px)] flex-col lg:flex-row">
-        <aside className="w-full shrink-0 border-b border-[#181818] bg-[#0c0c0c] lg:w-52 lg:border-b-0 lg:border-r">
-          <div className="flex items-center gap-2 border-b border-[#181818] px-3 py-[10px]">
-            <div className="grid grid-cols-2 gap-[2px] shrink-0">
-              <div className="h-[7px] w-[7px] bg-[#3a8a3a]" />
-              <div className="h-[7px] w-[7px] bg-[#2a2a2a]" />
-              <div className="h-[7px] w-[7px] bg-[#2a2a2a]" />
-              <div className="h-[7px] w-[7px] bg-[#3a8a3a]" />
-            </div>
-            <div>
-              <div className="text-[13px] font-semibold tracking-wide text-[#e0e0e0]">Project Studio</div>
-              <div className="text-[9px] uppercase tracking-[0.22em] text-[#3a3a3a]">Image → Comfy → Video</div>
-            </div>
-          </div>
+    <section className="space-y-4 text-[#d8d8d8]">
+      <header className="flex flex-col gap-3 border-b border-[#181818] pb-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <button type="button" onClick={onBack} className="mb-3 text-[10px] uppercase tracking-[0.22em] text-[#666] transition hover:text-[#3a8a3a]">
+            ← Project overview
+          </button>
+          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#343434]">Project page</p>
+          <h1 className="mt-2 truncate text-[16px] font-semibold leading-tight text-[#e0e0e0]">{project.title || 'Untitled project'}</h1>
+          <p className="mt-2 max-w-2xl text-[12px] leading-6 text-[#777]">Overview, continuity, routing, and approvals for this project. Reviews stay in the main left navigation instead of opening a second app shell.</p>
+        </div>
+        <div className="grid grid-cols-3 gap-3 text-right font-mono text-[10px]">
+          <Readout label="Assets" value={project.assets.length} />
+          <Readout label="Chars" value={project.characters.length} />
+          <Readout label="Jobs" value={project.refinement_jobs.length} />
+        </div>
+      </header>
 
-          <div className="grid grid-cols-2 gap-0 py-2 lg:block">
-            {[
-              ['Overview', `${readout?.asset_count ?? project.assets.length} assets`],
-              ['Characters', `${readout?.character_count ?? project.characters.length} cards`],
-              ['Shot grids', `${readout?.shot_grid_count ?? shotGrids.length} blocks`],
-              ['Refinement', `${stackQueuedCount} queued`],
-              ['Approvals', `${keptCount} kept`],
-              ['Video prep', `${stackSelectedCount} frames`],
-            ].map(([label, sub], index) => (
-              <div key={label} className={`flex items-center text-left ${index === 0 ? 'bg-[#131313] text-[#e0e0e0]' : 'text-[#585858]'}`}>
-                <div className="mr-3 w-[2px] self-stretch" style={{ background: index === 0 ? '#3a8a3a' : 'transparent', minHeight: 34 }} />
-                <div className="py-[7px]">
-                  <div className="text-[12px] font-medium leading-tight">{label}</div>
-                  <div className="text-[10px] text-[#3a3a3a]">{sub}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="border-t border-[#181818] p-3 space-y-[7px]">
-            <div className="flex items-center justify-between">
-              <span className="text-[9px] uppercase tracking-[0.2em] text-[#353535]">Comfy route</span>
-              <span className="flex items-center gap-1 text-[9px] text-[#3a8a3a]">
-                <span className="h-[5px] w-[5px] rounded-[2px] bg-[#3a8a3a] dot-pulse" />
-                READY
-              </span>
-            </div>
-            <Meter label="Keep" value={keptCount} max={Math.max(refinementCandidates.length, 1)} color="#3a8a3a" />
-            <Meter label="Comfy" value={comfyCount} max={Math.max(refinementCandidates.length, 1)} color="#4f9a4f" />
-            <Meter label="Finals" value={stackFinalCount} max={Math.max(project.assets.length, 1)} color="#6f7d64" />
-            <div className="pt-1 font-mono text-[9px] text-[#2a2a2a]">QUEUE · FACE_FIX · UPSCALE · APPROVE</div>
-          </div>
-        </aside>
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex shrink-0 items-center justify-between border-b border-[#181818] bg-[#0c0c0c] px-5 py-[8px]">
-            <div className="flex min-w-0 items-center gap-3">
-              <button type="button" onClick={onBack} className="text-[10px] uppercase tracking-[0.22em] text-[#666] transition hover:text-[#3a8a3a]">
-                ← Reviews
-              </button>
-              <span className="text-[#222]">/</span>
-              <span className="truncate text-[12px] font-semibold uppercase tracking-[0.18em] text-[#d0d0d0]">{project.title || 'Untitled project'}</span>
-              <span className="hidden border-l border-[#222] pl-3 text-[10px] text-[#3a3a3a] sm:inline">{project.status}</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="hidden items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-[#3a8a3a] sm:flex">
-                <span className="h-[5px] w-[5px] rounded-[2px] bg-[#3a8a3a] dot-pulse" />
-                Manifest synced
-              </span>
-              <span className="font-mono text-[11px] text-[#383838]">{new Date(project.updated_at).toLocaleDateString()}</span>
-            </div>
-          </header>
-
-          <div className="grid flex-1 overflow-hidden xl:grid-cols-[minmax(0,1fr)_224px]">
-            <main className="min-w-0 overflow-y-auto bg-[#080808] p-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_224px]">
+        <main className="min-w-0 space-y-4">
               <div className="grid gap-4 2xl:grid-cols-[minmax(520px,1.05fr)_minmax(380px,0.95fr)]">
                 <section className="overflow-hidden rounded-[3px] border border-[#181818] bg-[#0b0b0b]">
                   <div className="flex items-center justify-between border-b border-[#181818] px-3 py-2">
@@ -938,8 +883,6 @@ function ProjectPage({
               </div>
             </aside>
           </div>
-        </div>
-      </div>
     </section>
   )
 }
@@ -992,20 +935,6 @@ function AssetMiniCard({ projectId, asset, title, subtitle }: { projectId: strin
         <span className="mt-0.5 block truncate font-mono text-[9px] uppercase tracking-[0.16em] text-[#444]">{subtitle}</span>
       </span>
     </a>
-  )
-}
-
-function Meter({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
-  return (
-    <div>
-      <div className="mb-[3px] flex justify-between text-[10px]">
-        <span className="text-[#3a3a3a]">{label}</span>
-        <span className="font-mono" style={{ color }}>{value}</span>
-      </div>
-      <div className="h-[2px] rounded-[2px] bg-[#181818]">
-        <div className="h-full rounded-[2px] transition-all duration-700" style={{ width: `${Math.min(100, (value / Math.max(max, 1)) * 100)}%`, background: color }} />
-      </div>
-    </div>
   )
 }
 
@@ -1089,7 +1018,7 @@ function ProjectStrip({
                 {project.asset_count} asset{project.asset_count === 1 ? '' : 's'} · {project.character_count} character{project.character_count === 1 ? '' : 's'}
               </span>
               <span className="mt-2 block text-[10px] font-medium text-[color:var(--color-accent)]">
-                {loadingProjectId === project.project_id ? 'Opening project…' : 'Open full project studio'}
+                {loadingProjectId === project.project_id ? 'Opening project…' : 'Open project page'}
               </span>
             </span>
           </button>
