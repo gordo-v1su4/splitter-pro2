@@ -17,7 +17,7 @@ import { Card, CardContent } from './ui/card'
 type SplitModeUi = 'fixed' | 'auto'
 
 const inputLikeProcessChrome =
-  'rounded-sm border border-white/[0.08] bg-white/[0.02] text-zinc-200 outline-none focus:border-white/[0.16]'
+  'rounded-sm border border-[#181818] bg-[#090909] text-[#c0c0c0] outline-none focus:border-white/[0.16]'
 
 const API_CONNECTION_HINT =
   'The browser lost the connection to the API while splitting (this is not something you fix by “deploying” the frontend—local use still needs the FastAPI process running). For dev: run uvicorn on http://127.0.0.1:8000 and `bun run dev` so Vite can proxy /api. Common causes: backend not running, wrong port, very large uploads, or the worker crashing mid-request—try a tiny test PNG and check the uvicorn terminal for errors.'
@@ -165,14 +165,14 @@ export function ImageSplitWorkspace() {
       <aside className="space-y-4 lg:sticky lg:top-8 lg:self-start">
         <Card>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+            <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.28em] text-[#555]">
               <span>Source</span>
-              <span className="text-zinc-600">PNG · JPG · WebP</span>
+              <span className="text-[#343434]">PNG · JPG · WebP</span>
             </div>
 
             <div className="grid grid-cols-3 gap-2">
               {previewUrl ? (
-                <figure className="col-span-2 overflow-hidden rounded-sm border border-white/[0.06] bg-black/40">
+                <figure className="col-span-2 overflow-hidden rounded-sm border border-[#181818] bg-black/40">
                   <img
                     alt="Selected source thumbnail"
                     className="aspect-video w-full object-contain bg-black"
@@ -180,14 +180,14 @@ export function ImageSplitWorkspace() {
                     src={previewUrl}
                   />
                   {imageFiles.length > 1 ? (
-                    <figcaption className="border-t border-white/[0.06] bg-black/50 px-2 py-1.5 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-400">
+                    <figcaption className="border-t border-[#181818] bg-black/50 px-2 py-1.5 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-[#777]">
                       +{imageFiles.length - 1} more
                     </figcaption>
                   ) : null}
                 </figure>
               ) : (
-                <div className="col-span-2 flex aspect-video flex-col items-center justify-center rounded-sm border border-dashed border-white/[0.08] bg-white/[0.015] px-4 text-center text-[11px] text-zinc-500">
-                  <LayoutGrid className="mb-2 h-8 w-8 text-zinc-600" />
+                <div className="col-span-2 flex aspect-video flex-col items-center justify-center rounded-sm border border-dashed border-[#181818] bg-[#090909] px-4 text-center text-[11px] text-[#555]">
+                  <LayoutGrid className="mb-2 h-8 w-8 text-[#343434]" />
                   <span>No images yet.</span>
                 </div>
               )}
@@ -205,8 +205,8 @@ export function ImageSplitWorkspace() {
                 onDrop={handleDrop}
                 className="flex cursor-pointer items-center gap-3"
               >
-                <ImageIcon className="h-4 w-4 shrink-0 text-zinc-400" />
-                <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-300">
+                <ImageIcon className="h-4 w-4 shrink-0 text-[#777]" />
+                <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#aaa]">
                   {imageFiles.length ? 'Replace images' : 'Upload images'}
                 </span>
                 <input
@@ -229,7 +229,7 @@ export function ImageSplitWorkspace() {
             </Button>
 
             <div className="space-y-3 border-t border-white/[0.05] pt-4">
-              <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.26em] text-zinc-600">
+              <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.26em] text-[#343434]">
                 <span>Split mode</span>
               </div>
               <div className="flex gap-2">
@@ -257,13 +257,13 @@ export function ImageSplitWorkspace() {
             <div className="space-y-3 border-t border-white/[0.05] pt-4">
               {splitMode === 'fixed' ? (
                 <div className="grid grid-cols-2 gap-4">
-                  <p className="col-span-2 text-[11px] leading-relaxed text-zinc-500">
+                  <p className="col-span-2 text-[11px] leading-relaxed text-[#555]">
                     Same rows and cols keep each panel matching the plate aspect (16×9 plates default to 2×2).
                   </p>
-                  <label className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+                  <label className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#555]">
                     Rows
                     <input
-                      className={cn('mt-2 w-full px-2 py-1 text-base tabular-nums', inputLikeProcessChrome)}
+                      className={cn('mt-2 w-full px-2 py-1 text-[12px] tabular-nums', inputLikeProcessChrome)}
                       inputMode="numeric"
                       max={24}
                       min={1}
@@ -272,10 +272,10 @@ export function ImageSplitWorkspace() {
                       onChange={(event) => setRows(Number.parseInt(event.target.value, 10) || 1)}
                     />
                   </label>
-                  <label className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+                  <label className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#555]">
                     Cols
                     <input
-                      className={cn('mt-2 w-full px-2 py-1 text-base tabular-nums', inputLikeProcessChrome)}
+                      className={cn('mt-2 w-full px-2 py-1 text-[12px] tabular-nums', inputLikeProcessChrome)}
                       inputMode="numeric"
                       max={24}
                       min={1}
@@ -286,9 +286,9 @@ export function ImageSplitWorkspace() {
                   </label>
                 </div>
               ) : (
-                <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+                <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-[#555]">
                   Sensitivity
-                  <span className="ml-3 text-[11px] text-zinc-300">{Math.round(sensitivity * 100)}%</span>
+                  <span className="ml-3 text-[11px] text-[#aaa]">{Math.round(sensitivity * 100)}%</span>
                   <input
                     className="splitter-range mt-2 block w-full"
                     max={100}
@@ -300,9 +300,9 @@ export function ImageSplitWorkspace() {
                 </label>
               )}
 
-              <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+              <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-[#555]">
                 Gutter
-                <span className="ml-3 text-[11px] text-zinc-300">{gutterPx}px</span>
+                <span className="ml-3 text-[11px] text-[#aaa]">{gutterPx}px</span>
                 <input
                   className="splitter-range mt-2 block w-full"
                   max={96}
@@ -315,11 +315,11 @@ export function ImageSplitWorkspace() {
             </div>
 
             <div className="space-y-2 border-t border-white/[0.05] pt-4">
-              <p className="font-mono text-[10px] uppercase tracking-[0.26em] text-zinc-600">Integrations</p>
-              <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+              <p className="font-mono text-[10px] uppercase tracking-[0.26em] text-[#343434]">Integrations</p>
+              <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#555]">
                 Google Sheets URL
                 <input
-                  className={cn('mt-2 w-full px-2 py-2 text-xs', inputLikeProcessChrome)}
+                  className={cn('mt-2 w-full px-2 py-2 text-[10px]', inputLikeProcessChrome)}
                   placeholder="https://docs.google.com/spreadsheets/..."
                   type="url"
                   value={sheetsUrl}
@@ -348,17 +348,17 @@ export function ImageSplitWorkspace() {
               )}
             </Button>
 
-            {error ? <p className="whitespace-pre-line text-center text-xs text-red-300">{error}</p> : null}
+            {error ? <p className="whitespace-pre-line text-center text-[10px] text-red-300">{error}</p> : null}
           </CardContent>
         </Card>
       </aside>
 
       <section className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.06] pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#181818] pb-4">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">Results</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#555]">Results</p>
             <div className="mt-2 flex flex-wrap items-center gap-4">
-              <h2 className="font-display text-3xl italic text-zinc-50">Panels</h2>
+              <h2 className="text-[16px] font-semibold text-[#e0e0e0]">Panels</h2>
               <Badge>{panelCountLabel}</Badge>
             </div>
           </div>
@@ -379,7 +379,7 @@ export function ImageSplitWorkspace() {
         </div>
 
         {!manifest ? (
-          <div className="rounded-md border border-dashed border-white/[0.06] bg-white/[0.01] px-6 py-20 text-center text-sm text-zinc-500">
+          <div className="rounded-[2px] border border-dashed border-[#181818] bg-white/[0.01] px-6 py-20 text-center text-[12px] text-[#555]">
             Processed panels will appear here once you upload one or more plates and tap &ldquo;Run splitter.&rdquo;
           </div>
         ) : (
@@ -387,7 +387,7 @@ export function ImageSplitWorkspace() {
             {manifest.panels.map((panel) => (
               <figure
                 key={`${panel.index}-${panel.asset_path}`}
-                className="space-y-2 rounded-md border border-white/[0.05] bg-white/[0.01] p-3"
+                className="space-y-2 rounded-[2px] border border-white/[0.05] bg-white/[0.01] p-3"
               >
                 <div className="relative overflow-hidden rounded-sm border border-white/[0.04] bg-black">
                   <img
@@ -411,7 +411,7 @@ export function ImageSplitWorkspace() {
                     </a>
                   </Button>
                 </div>
-                <figcaption className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400">
+                <figcaption className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-[#777]">
                   <span>{panel.label}</span>
                 </figcaption>
               </figure>

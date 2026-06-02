@@ -106,7 +106,7 @@ function App() {
   const hasActiveWork = job !== null
 
   return (
-    <main className="relative h-screen overflow-hidden bg-[#070707] text-zinc-100">
+    <main className="relative h-screen overflow-hidden bg-[#070707] text-[#c0c0c0]" style={{ fontFamily: "'Inter','SF Pro Display',system-ui,sans-serif" }}>
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[360px] opacity-50"
         style={{
@@ -261,7 +261,7 @@ function WorkspaceHeader({
       </div>
       <div className="flex items-center gap-4">
         <span className="hidden items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-[#3a8a3a] sm:flex">
-          <span className="h-[5px] w-[5px] rounded-full bg-[#3a8a3a] dot-pulse" />
+          <span className="h-[5px] w-[5px] rounded-[2px] bg-[#3a8a3a] dot-pulse" />
           Main screen
         </span>
         <a className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#555] transition hover:text-[#3a8a3a]" href={reviewsHref} rel="noreferrer">
@@ -276,24 +276,24 @@ function HeroFull() {
   return (
     <header className="mt-10 grid gap-10 lg:grid-cols-[1.4fr_1fr] lg:items-end lg:gap-14">
       <div className="space-y-5">
-        <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.28em] text-zinc-500">
+        <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.28em] text-[#555]">
           <span className="h-px w-8 bg-zinc-700" />
           <span>Scene · Detect · Split</span>
         </div>
-        <h1 className="font-display text-5xl leading-[0.95] tracking-[-0.02em] text-zinc-50 sm:text-6xl lg:text-[72px]">
+        <h1 className="text-[26px] font-semibold leading-none tracking-[-0.02em] text-[#e0e0e0]">
           Every cut,
           <br />
-          <em className="italic text-zinc-300">on its own</em>
+          <span className="text-[#aaa]">on its own</span>
           <span className="text-[color:var(--color-accent)]">.</span>
         </h1>
-        <p className="max-w-xl text-[14px] leading-relaxed text-zinc-400">
+        <p className="max-w-xl text-[14px] leading-relaxed text-[#777]">
           Drop a video. PySceneDetect finds the hard cuts, ffmpeg slices each scene
           frame-accurately, and the first frame of every shot becomes a thumbnail you can
           scrub through. Local-first. Disk-backed. Zero cloud.
         </p>
       </div>
 
-      <aside className="flex flex-col justify-end gap-1 self-end font-mono text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+      <aside className="flex flex-col justify-end gap-1 self-end font-mono text-[11px] uppercase tracking-[0.22em] text-[#555]">
         <Spec label="Detector" value="PySceneDetect · Adaptive" />
         <Spec label="Splitter" value="ffmpeg · frame accurate" />
         <Spec label="Output" value="Clips · Stills · Sheet" />
@@ -305,17 +305,17 @@ function HeroFull() {
 
 function HeroCompact() {
   return (
-    <header className="mt-5 flex flex-wrap items-baseline justify-between gap-4 border-b border-white/[0.06] pb-4">
+    <header className="mt-5 flex flex-wrap items-baseline justify-between gap-4 border-b border-[#181818] pb-4">
       <div className="flex items-baseline gap-4">
-        <h1 className="font-display text-2xl italic leading-none tracking-tight text-zinc-50 sm:text-3xl">
-          Every cut, <em className="text-zinc-400">on its own</em>
+        <h1 className="text-[16px] font-semibold leading-none tracking-tight text-[#e0e0e0] sm:text-[16px] font-semibold">
+          Every cut, <span className="text-[#777]">on its own</span>
           <span className="text-[color:var(--color-accent)]">.</span>
         </h1>
       </div>
-      <div className="flex items-center gap-5 font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500">
-        <span><span className="text-zinc-700">/</span> PySceneDetect</span>
-        <span><span className="text-zinc-700">/</span> ffmpeg</span>
-        <span><span className="text-zinc-700">/</span> per-job folder</span>
+      <div className="flex items-center gap-5 font-mono text-[10px] uppercase tracking-[0.24em] text-[#555]">
+        <span><span className="text-[#222]">/</span> PySceneDetect</span>
+        <span><span className="text-[#222]">/</span> ffmpeg</span>
+        <span><span className="text-[#222]">/</span> per-job folder</span>
       </div>
     </header>
   )
@@ -323,9 +323,9 @@ function HeroCompact() {
 
 function Spec({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[80px_1fr] items-baseline gap-4 border-t border-white/[0.06] py-2">
-      <span className="text-zinc-600">{label}</span>
-      <span className="text-zinc-300">{value}</span>
+    <div className="grid grid-cols-[80px_1fr] items-baseline gap-4 border-t border-[#181818] py-2">
+      <span className="text-[#343434]">{label}</span>
+      <span className="text-[#aaa]">{value}</span>
     </div>
   )
 }
@@ -359,23 +359,23 @@ function ShotSequenceHeader({
 
   return (
     <div className="space-y-3 border-t border-white/[0.04] pt-4">
-      <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-600">
-        <span className="text-zinc-500/90">Shot sequence ready</span>
+      <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#343434]">
+        <span className="text-[#555]/90">Shot sequence ready</span>
       </p>
       <div className="flex flex-col gap-2 min-[1024px]:flex-row min-[1024px]:items-start min-[1024px]:justify-between min-[1024px]:gap-6">
         <div className="min-w-0 flex-1">
           <h2
-            className="block max-w-full truncate whitespace-nowrap font-mono text-sm font-normal text-zinc-400/95 sm:text-[15px]"
+            className="block max-w-full truncate whitespace-nowrap font-mono text-[12px] font-normal text-[#777] sm:text-[12px]"
             title={manifest.source_video}
           >
             {manifest.source_video}
           </h2>
-          <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-600">
+          <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[#343434]">
             {manifest.segment_count} seg · {formatDuration(manifest.duration_seconds)} · {manifest.frame_count} fr
           </p>
         </div>
 
-        <div className="flex flex-shrink-0 flex-wrap items-center gap-x-1 font-mono text-[11px] text-zinc-500/90 min-[1024px]:pt-0.5 min-[1024px]:text-right">
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-x-1 font-mono text-[11px] text-[#555]/90 min-[1024px]:pt-0.5 min-[1024px]:text-right">
           {exports.map((item, i) => {
             const short =
               item.label === 'Export keyframes ZIP'
@@ -385,22 +385,22 @@ function ShotSequenceHeader({
                   : 'sheet'
             return (
               <span key={item.label} className="inline-flex items-center">
-                {i > 0 ? <span className="px-1 text-zinc-700/80">·</span> : null}
+                {i > 0 ? <span className="px-1 text-[#222]/80">·</span> : null}
                 <a
                   href={item.href}
                   download
-                  className="text-zinc-500/90 underline decoration-white/10 decoration-dotted underline-offset-4 transition-colors hover:text-zinc-300 hover:decoration-zinc-500"
+                  className="text-[#555]/90 underline decoration-white/10 decoration-dotted underline-offset-4 transition-colors hover:text-[#aaa] hover:decoration-zinc-500"
                 >
                   {short}
                 </a>
               </span>
             )
           })}
-          {exports.length > 0 ? <span className="px-1 text-zinc-700/80">·</span> : null}
+          {exports.length > 0 ? <span className="px-1 text-[#222]/80">·</span> : null}
           <button
             type="button"
             onClick={onReset}
-            className="text-zinc-500/90 transition-colors hover:text-zinc-300"
+            className="text-[#555]/90 transition-colors hover:text-[#aaa]"
           >
             new pass
           </button>
@@ -412,15 +412,15 @@ function ShotSequenceHeader({
 
 function EmptyShotSequence() {
   return (
-    <section className="mt-8 border-t border-white/[0.06] pt-8">
+    <section className="mt-8 border-t border-[#181818] pt-8">
       <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
         <div className="space-y-2">
-          <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+          <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.28em] text-[#555]">
             <span className="h-px w-6 bg-zinc-700" />
             <span>Workflow</span>
           </div>
-          <h2 className="font-display text-2xl italic tracking-tight text-zinc-50 sm:text-3xl">
-            Three steps. <em className="text-zinc-500">No more.</em>
+          <h2 className="text-[16px] font-semibold tracking-tight text-[#e0e0e0] sm:text-[16px] font-semibold">
+            Three steps. <span className="text-[#555]">No more.</span>
           </h2>
         </div>
         <ol className="grid gap-px bg-white/[0.06] sm:grid-cols-3">
@@ -437,11 +437,11 @@ function Step({ index, title, body }: { index: string; title: string; body: stri
   return (
     <li className="space-y-2 bg-[#0a0a0b] p-5">
       <div className="flex items-baseline justify-between">
-        <span className="font-mono text-[11px] tracking-[0.2em] text-zinc-600">{index}</span>
-        <Film className="h-3.5 w-3.5 text-zinc-700" />
+        <span className="font-mono text-[11px] tracking-[0.2em] text-[#343434]">{index}</span>
+        <Film className="h-3.5 w-3.5 text-[#222]" />
       </div>
-      <p className="font-display text-xl italic text-zinc-50">{title}</p>
-      <p className="text-[12px] leading-5 text-zinc-500">{body}</p>
+      <p className="text-[13px] text-[#e0e0e0]">{title}</p>
+      <p className="text-[12px] leading-5 text-[#555]">{body}</p>
     </li>
   )
 }

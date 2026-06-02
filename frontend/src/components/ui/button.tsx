@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils'
 
 const buttonVariants = cva(
   [
-    'inline-flex items-center justify-center gap-1.5 rounded-sm font-medium tracking-tight',
+    'inline-flex items-center justify-center gap-1.5 rounded-[2px] font-medium uppercase tracking-[0.14em]',
     'transition-colors duration-150 outline-none',
     'focus-visible:ring-1 focus-visible:ring-[color:var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0b]',
     'disabled:pointer-events-none disabled:opacity-40',
@@ -19,21 +19,21 @@ const buttonVariants = cva(
           'hover:bg-[#c4f06b]',
         ].join(' '),
         secondary: [
-          'border border-white/[0.08] bg-white/[0.02] text-zinc-200',
-          'hover:bg-white/[0.05] hover:border-white/[0.16] hover:text-zinc-50',
+          'border border-[#181818] bg-[#090909] text-[#c0c0c0]',
+          'hover:bg-white/[0.05] hover:border-white/[0.16] hover:text-[#e0e0e0]',
         ].join(' '),
         ghost: [
-          'text-zinc-400',
-          'hover:bg-white/[0.04] hover:text-zinc-100',
+          'text-[#777]',
+          'hover:bg-white/[0.04] hover:text-[#d4d4d4]',
         ].join(' '),
         outline: [
-          'border border-white/[0.12] text-zinc-200',
+          'border border-white/[0.12] text-[#c0c0c0]',
           'hover:bg-white/[0.04] hover:border-white/[0.24]',
         ].join(' '),
       },
       size: {
         /* fixed height so padding/line-height can’t balloon the control */
-        default: 'h-10 min-h-10 px-4 text-[13px] leading-none',
+        default: 'h-8 min-h-8 px-3 py-2 text-[10px] leading-none',
         /* ~half of default — Process video, dense chrome */
         sm: 'h-7 min-h-7 px-2.5 py-0 text-[10px] leading-none gap-1',
       },

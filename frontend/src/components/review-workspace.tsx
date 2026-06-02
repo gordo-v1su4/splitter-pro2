@@ -238,58 +238,58 @@ export function ReviewWorkspace() {
 
   return (
     <section className="mt-6 space-y-6">
-      <header className="flex flex-col gap-3 border-b border-white/[0.06] pb-4 sm:flex-row sm:items-end sm:justify-between">
+      <header className="flex flex-col gap-3 border-b border-[#181818] pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-600">Image good / reasons</p>
-          <h1 className="mt-2 font-display text-3xl italic leading-none tracking-tight text-zinc-50">Image review</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#343434]">Image good / reasons</p>
+          <h1 className="mt-2 text-[16px] font-semibold leading-tight text-[#e0e0e0]">Image review</h1>
+          <p className="mt-2 max-w-2xl text-[12px] leading-6 text-[#777]">
             Publish generated images and why they matter, then keep the review history visible below.
           </p>
         </div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#343434]">
           {reviews.length} saved review{reviews.length === 1 ? '' : 's'}
         </p>
       </header>
 
-      <Card className="border-white/[0.08] bg-white/[0.025]">
+      <Card className="border-[#181818] bg-[#090909]">
         <CardHeader className="pb-2">
-          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-600">Publish</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#343434]">Publish</p>
           <CardTitle>Publish images</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 lg:grid-cols-[1fr_1.2fr_220px] lg:items-end">
           <label className="block space-y-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">Title</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#555]">Title</span>
             <input
               value={title}
               onChange={(event) => setTitle(event.currentTarget.value)}
-              className="w-full rounded-sm border border-white/[0.08] bg-black/30 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[color:var(--color-accent-line)]"
+              className="w-full rounded-sm border border-[#181818] bg-[#080808] px-3 py-2 text-[12px] text-[#d4d4d4] outline-none focus:border-[color:var(--color-accent-line)]"
               placeholder="Act 1 image good, hero options…"
             />
           </label>
 
           <label className="block space-y-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">Reason / notes</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#555]">Reason / notes</span>
             <input
               value={notes}
               onChange={(event) => setNotes(event.currentTarget.value)}
-              className="w-full rounded-sm border border-white/[0.08] bg-black/30 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[color:var(--color-accent-line)]"
+              className="w-full rounded-sm border border-[#181818] bg-[#080808] px-3 py-2 text-[12px] text-[#d4d4d4] outline-none focus:border-[color:var(--color-accent-line)]"
               placeholder="Why these are good, what to compare, what changed…"
             />
           </label>
 
           <div className="space-y-2">
             <label className="block space-y-1.5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">Images</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#555]">Images</span>
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 multiple
                 onChange={(event) => setFiles(Array.from(event.currentTarget.files ?? []))}
-                className="w-full text-xs text-zinc-400 file:mr-3 file:rounded-sm file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-xs file:text-zinc-200"
+                className="w-full text-[10px] text-[#777] file:mr-3 file:rounded-sm file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-[10px] file:text-[#c0c0c0]"
               />
             </label>
             {files.length > 0 ? (
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#343434]">
                 {files.length} staged
               </p>
             ) : null}
@@ -300,7 +300,7 @@ export function ReviewWorkspace() {
               {isPublishing ? 'Publishing…' : 'Publish images'}
             </Button>
           </div>
-          {error ? <p className="text-sm text-red-300 lg:col-span-3">{error}</p> : null}
+          {error ? <p className="text-[12px] text-red-300 lg:col-span-3">{error}</p> : null}
         </CardContent>
       </Card>
 
@@ -448,14 +448,14 @@ function ReviewGallery({
 
   return (
     <article className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 border-b border-white/[0.06] pb-4 sm:flex-row sm:items-end">
+      <div className="flex flex-col justify-between gap-3 border-b border-[#181818] pb-4 sm:flex-row sm:items-end">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-600">Current review</p>
-          <h2 className="mt-2 font-display text-3xl italic text-zinc-50">{review.title || 'Untitled image review'}</h2>
-          {review.notes ? <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">{review.notes}</p> : null}
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#343434]">Current review</p>
+          <h2 className="mt-2 text-[16px] font-semibold text-[#e0e0e0]">{review.title || 'Untitled image review'}</h2>
+          {review.notes ? <p className="mt-2 max-w-2xl text-[12px] leading-6 text-[#777]">{review.notes}</p> : null}
         </div>
         <div className="space-y-2 sm:text-right">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#343434]">
             {review.image_count} review frame{review.image_count === 1 ? '' : 's'} · approve before storage
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -481,7 +481,7 @@ function ReviewGallery({
       </div>
 
       {pendingImages.length === 0 ? (
-        <div className="rounded-md border border-emerald-400/20 bg-emerald-400/[0.06] p-4 text-sm text-emerald-100/90">
+        <div className="rounded-[2px] border border-emerald-400/20 bg-emerald-400/[0.06] p-4 text-[12px] text-emerald-100/90">
           This review has no pending images left. It has moved down into the compact history log.
         </div>
       ) : (
@@ -492,7 +492,7 @@ function ReviewGallery({
             return (
               <figure
                 key={image.asset_path}
-                className="group overflow-hidden rounded-md border border-white/[0.08] bg-zinc-950 shadow-[0_18px_60px_rgba(0,0,0,0.24)]"
+                className="group overflow-hidden rounded-[2px] border border-[#181818] bg-zinc-950 shadow-[0_18px_60px_rgba(0,0,0,0.24)]"
               >
                 <button
                   type="button"
@@ -507,18 +507,18 @@ function ReviewGallery({
                   />
                   <div className="pointer-events-none absolute inset-0 flex items-end bg-gradient-to-t from-black/85 via-black/10 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                     <div className="w-full p-3">
-                      <div className="flex items-center justify-between gap-3 text-xs text-zinc-100">
+                      <div className="flex items-center justify-between gap-3 text-[10px] text-[#d4d4d4]">
                         <span className="truncate font-medium">{image.label}</span>
-                        <span className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-zinc-200">
+                        <span className="rounded-[2px] border border-white/15 bg-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-[#c0c0c0]">
                           {status}
                         </span>
                       </div>
-                      <p className="mt-1 text-[11px] text-zinc-400">{image.width}×{image.height} · click to inspect</p>
+                      <p className="mt-1 text-[11px] text-[#777]">{image.width}×{image.height} · click to inspect</p>
                     </div>
                   </div>
                 </button>
-                <figcaption className="flex items-center justify-between gap-3 px-3 py-2 text-xs text-zinc-400">
-                  <span className="text-zinc-500">{status}</span>
+                <figcaption className="flex items-center justify-between gap-3 px-3 py-2 text-[10px] text-[#777]">
+                  <span className="text-[#555]">{status}</span>
                   <Button type="button" variant="secondary" size="sm" onClick={() => openImage(image.index)}>
                     Inspect
                   </Button>
@@ -541,22 +541,22 @@ function ReviewGallery({
             }
           }}
         >
-          <div className="w-full max-w-7xl overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 shadow-2xl">
-            <div className="flex flex-col gap-3 border-b border-white/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="w-full max-w-7xl overflow-hidden rounded-[2px] border border-[#181818] bg-zinc-950/95 shadow-2xl">
+            <div className="flex flex-col gap-3 border-b border-[#181818] p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">Image inspection</p>
-                <h3 className="mt-1 text-lg font-medium text-zinc-50">{selectedImage.label}</h3>
+                <p className="text-[10px] uppercase tracking-[0.22em] text-[#555]">Image inspection</p>
+                <h3 className="mt-1 text-[13px] font-medium text-[#e0e0e0]">{selectedImage.label}</h3>
               </div>
               <button
                 type="button"
                 onClick={closeImage}
-                className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-200 transition hover:bg-white/[0.08]"
+                className="rounded-[2px] border border-[#181818] bg-white/[0.04] px-4 py-2 text-[12px] text-[#c0c0c0] transition hover:bg-white/[0.08]"
               >
                 Close
               </button>
             </div>
             <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-              <div className="relative flex max-h-[82vh] min-h-[42vh] items-center justify-center overflow-auto rounded-lg bg-black/60 p-2">
+              <div className="relative flex max-h-[82vh] min-h-[42vh] items-center justify-center overflow-auto rounded-[2px] bg-black/60 p-2">
                 <img
                   src={selectedImageUrl}
                   alt={`${selectedImage.label} large preview`}
@@ -564,12 +564,12 @@ function ReviewGallery({
                   style={zoomScale > 1 ? { width: `${selectedImage.width * zoomScale}px` } : undefined}
                   className={zoomScale > 1 ? 'h-auto max-w-none cursor-zoom-out object-contain' : 'max-h-[78vh] w-auto max-w-full cursor-zoom-in object-contain'}
                 />
-                <div className="absolute bottom-3 right-3 flex flex-wrap justify-end gap-2 rounded-full border border-white/10 bg-black/80 p-1.5 shadow-2xl backdrop-blur">
+                <div className="absolute bottom-3 right-3 flex flex-wrap justify-end gap-2 rounded-[2px] border border-[#181818] bg-black/80 p-1.5 shadow-2xl backdrop-blur">
                   <button
                     type="button"
                     onClick={() => setZoomScale(1)}
                     aria-pressed={zoomScale === 1}
-                    className="rounded-full px-3 py-1 text-xs font-medium text-zinc-200 transition hover:bg-white/10 aria-pressed:bg-white/15"
+                    className="rounded-[2px] px-3 py-1 text-[10px] font-medium text-[#c0c0c0] transition hover:bg-white/10 aria-pressed:bg-white/15"
                   >
                     Fit
                   </button>
@@ -577,7 +577,7 @@ function ReviewGallery({
                     type="button"
                     onClick={() => setZoomScale(2)}
                     aria-pressed={zoomScale === 2}
-                    className="rounded-full px-3 py-1 text-xs font-medium text-zinc-200 transition hover:bg-white/10 aria-pressed:bg-white/15"
+                    className="rounded-[2px] px-3 py-1 text-[10px] font-medium text-[#c0c0c0] transition hover:bg-white/10 aria-pressed:bg-white/15"
                   >
                     2×
                   </button>
@@ -585,7 +585,7 @@ function ReviewGallery({
                     type="button"
                     onClick={() => setZoomScale(3)}
                     aria-pressed={zoomScale === 3}
-                    className="rounded-full px-3 py-1 text-xs font-medium text-zinc-200 transition hover:bg-white/10 aria-pressed:bg-white/15"
+                    className="rounded-[2px] px-3 py-1 text-[10px] font-medium text-[#c0c0c0] transition hover:bg-white/10 aria-pressed:bg-white/15"
                   >
                     3×
                   </button>
@@ -593,24 +593,24 @@ function ReviewGallery({
                     href={selectedImageUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-full px-3 py-1 text-xs font-medium text-[color:var(--color-accent)] transition hover:bg-white/10"
+                    className="rounded-[2px] px-3 py-1 text-[10px] font-medium text-[color:var(--color-accent)] transition hover:bg-white/10"
                   >
                     Open full size
                   </a>
                 </div>
               </div>
-              <aside className="space-y-4 rounded-lg border border-white/10 bg-white/[0.03] p-4">
-                <div className="space-y-1 text-sm text-zinc-400">
-                  <p className="text-zinc-100">{selectedImage.width}×{selectedImage.height}</p>
+              <aside className="space-y-4 rounded-[2px] border border-[#181818] bg-[#090909] p-4">
+                <div className="space-y-1 text-[12px] text-[#777]">
+                  <p className="text-[#d4d4d4]">{selectedImage.width}×{selectedImage.height}</p>
                   <p>Status: {selectedImage.approval_status ?? 'pending'}</p>
                 </div>
                 <label className="block space-y-2">
-                  <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Optional rejection reason</span>
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-[#555]">Optional rejection reason</span>
                   <textarea
                     value={rejectReason}
                     onChange={(event) => setRejectReason(event.currentTarget.value)}
                     rows={4}
-                    className="w-full rounded-md border border-white/10 bg-black/35 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-700 focus:border-[color:var(--color-accent-line)]"
+                    className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-3 py-2 text-[12px] text-[#d4d4d4] outline-none placeholder:text-[#222] focus:border-[color:var(--color-accent-line)]"
                     placeholder="Too vertical, wrong character, unreadable layout…"
                   />
                 </label>
@@ -736,7 +736,7 @@ function ProjectPage({
             <div className="flex items-center justify-between">
               <span className="text-[9px] uppercase tracking-[0.2em] text-[#353535]">Comfy route</span>
               <span className="flex items-center gap-1 text-[9px] text-[#3a8a3a]">
-                <span className="h-[5px] w-[5px] rounded-full bg-[#3a8a3a] dot-pulse" />
+                <span className="h-[5px] w-[5px] rounded-[2px] bg-[#3a8a3a] dot-pulse" />
                 READY
               </span>
             </div>
@@ -759,7 +759,7 @@ function ProjectPage({
             </div>
             <div className="flex items-center gap-4">
               <span className="hidden items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-[#3a8a3a] sm:flex">
-                <span className="h-[5px] w-[5px] rounded-full bg-[#3a8a3a] dot-pulse" />
+                <span className="h-[5px] w-[5px] rounded-[2px] bg-[#3a8a3a] dot-pulse" />
                 Manifest synced
               </span>
               <span className="font-mono text-[11px] text-[#383838]">{new Date(project.updated_at).toLocaleDateString()}</span>
@@ -773,7 +773,7 @@ function ProjectPage({
                   <div className="flex items-center justify-between border-b border-[#181818] px-3 py-2">
                     <div>
                       <div className="text-[9px] uppercase tracking-[0.22em] text-[#343434]">Approved look</div>
-                      <h1 className="mt-1 truncate text-[26px] font-semibold italic leading-none tracking-[-0.02em] text-[#f0f0f0]">{project.title || 'Untitled project'}</h1>
+                      <h1 className="mt-1 truncate text-[26px] font-semibold leading-none tracking-[-0.02em] text-[#f0f0f0]">{project.title || 'Untitled project'}</h1>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-right font-mono text-[10px]">
                       <Readout label="Assets" value={project.assets.length} />
@@ -807,12 +807,12 @@ function ProjectPage({
                     </div>
                     <span className="rounded-[2px] border border-[#1f2f1f] bg-[#081008] px-2 py-1 font-mono text-[10px] text-[#3a8a3a]">WORKING</span>
                   </div>
-                  <p className="min-h-20 rounded-[2px] border border-[#181818] bg-[#070707] p-3 text-sm leading-6 text-[#9a9a9a]">
+                  <p className="min-h-20 rounded-[2px] border border-[#181818] bg-[#070707] p-3 text-[12px] leading-6 text-[#9a9a9a]">
                     {nextAction}
                   </p>
-                  {project.notes ? <p className="mt-2 rounded-[2px] border border-[#181818] bg-[#080808] p-2 text-xs text-[#666]">{project.notes}</p> : null}
+                  {project.notes ? <p className="mt-2 rounded-[2px] border border-[#181818] bg-[#080808] p-2 text-[10px] text-[#666]">{project.notes}</p> : null}
                   {latestRefinement ? (
-                    <div className="mt-3 rounded-[2px] border border-[#1f2f1f] bg-[#081008] px-3 py-2 text-xs text-[#9ed29e]">
+                    <div className="mt-3 rounded-[2px] border border-[#1f2f1f] bg-[#081008] px-3 py-2 text-[10px] text-[#9ed29e]">
                       Latest: {formatRefinementWorkflow(latestRefinement.workflow_name)} {latestRefinement.status} · {latestRefinement.input_asset_ids.length} input{latestRefinement.input_asset_ids.length === 1 ? '' : 's'}
                     </div>
                   ) : null}
@@ -836,7 +836,7 @@ function ProjectPage({
                   </div>
                 </div>
                 {refinementCandidates.length === 0 ? (
-                  <p className="m-3 rounded-[2px] border border-dashed border-[#181818] bg-[#080808] p-3 text-sm text-[#555]">No stills are ready for refinement routing yet.</p>
+                  <p className="m-3 rounded-[2px] border border-dashed border-[#181818] bg-[#080808] p-3 text-[12px] text-[#555]">No stills are ready for refinement routing yet.</p>
                 ) : (
                   <div className="grid gap-px bg-[#181818] sm:grid-cols-2 2xl:grid-cols-3 min-[1800px]:grid-cols-4">
                     {refinementCandidates.map((asset, index) => (
@@ -859,7 +859,7 @@ function ProjectPage({
                     const sheet = project.assets.find((asset) => asset.asset_id === character.sheet_asset_id)
                     return sheet ? <AssetMiniCard key={character.character_id} projectId={project.project_id} asset={sheet} title={character.name} subtitle="Character sheet" /> : null
                   })}
-                  {sheets.length > project.characters.length ? <p className="text-xs text-[#555]">{sheets.length - project.characters.length} sheet asset(s) waiting for names.</p> : null}
+                  {sheets.length > project.characters.length ? <p className="text-[10px] text-[#555]">{sheets.length - project.characters.length} sheet asset(s) waiting for names.</p> : null}
                 </ProjectPanel>
 
                 <ProjectPanel title="Cinematic shot grids" eyebrow="Sequential blocks" empty="Upload 3×3 grids here before splitting.">
@@ -892,7 +892,7 @@ function ProjectPage({
               <div className="border-b border-[#181818] p-3">
                 <div className="mb-2 text-[9px] uppercase tracking-[0.22em] text-[#343434]">Add project asset</div>
                 <div className="space-y-2">
-                  <select value={assetType} onChange={(event) => setAssetType(event.currentTarget.value as ProjectAsset['asset_type'])} className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-xs text-[#aaa] outline-none">
+                  <select value={assetType} onChange={(event) => setAssetType(event.currentTarget.value as ProjectAsset['asset_type'])} className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] text-[#aaa] outline-none">
                     <option value="character_sheet">Character sheet — intact</option>
                     <option value="single_still">Single still — route</option>
                     <option value="cinematic_shot_grid">Shot grid — split later</option>
@@ -900,11 +900,11 @@ function ProjectPage({
                     <option value="refined_shot">Comfy refined shot</option>
                     <option value="other">Other / hold</option>
                   </select>
-                  <input value={assetLabel} onChange={(event) => setAssetLabel(event.currentTarget.value)} placeholder="Asset label" className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-xs text-[#ddd] outline-none" />
+                  <input value={assetLabel} onChange={(event) => setAssetLabel(event.currentTarget.value)} placeholder="Asset label" className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] text-[#ddd] outline-none" />
                   {assetType === 'character_sheet' ? (
-                    <input value={characterName} onChange={(event) => setCharacterName(event.currentTarget.value)} placeholder="Character name" className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-xs text-[#ddd] outline-none" />
+                    <input value={characterName} onChange={(event) => setCharacterName(event.currentTarget.value)} placeholder="Character name" className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] text-[#ddd] outline-none" />
                   ) : null}
-                  <textarea value={assetNotes} onChange={(event) => setAssetNotes(event.currentTarget.value)} rows={3} placeholder="Continuity notes / next action" className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-xs text-[#ddd] outline-none" />
+                  <textarea value={assetNotes} onChange={(event) => setAssetNotes(event.currentTarget.value)} rows={3} placeholder="Continuity notes / next action" className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] text-[#ddd] outline-none" />
                   <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setAssetFile(event.currentTarget.files?.[0] ?? null)} className="w-full text-[10px] text-[#555] file:mr-2 file:rounded-[2px] file:border-0 file:bg-[#181818] file:px-2 file:py-1.5 file:text-[10px] file:text-[#aaa]" />
                   <Button type="button" onClick={submitAsset} disabled={!assetFile || isBusy} className="w-full">
                     {isBusy ? 'Adding…' : 'Add asset'}
@@ -968,7 +968,7 @@ function AssetDecisionCard({
       </a>
       <div className="mt-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-xs font-medium text-[#d8d8d8]">{asset.label}</p>
+          <p className="truncate text-[10px] font-medium text-[#d8d8d8]">{asset.label}</p>
           <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-[#444]">#{index + 1} · {asset.width}×{asset.height}</p>
         </div>
         <span className="rounded-[2px] border border-[#181818] bg-[#080808] px-1.5 py-1 font-mono text-[9px] text-[#555]">{asset.asset_type}</span>
@@ -988,7 +988,7 @@ function AssetMiniCard({ projectId, asset, title, subtitle }: { projectId: strin
     <a href={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-[2px] border border-[#181818] bg-[#080808] transition hover:border-[#3a8a3a]/50">
       <img src={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} alt={asset.label} className="aspect-video w-full bg-black object-cover object-top" />
       <span className="block p-2">
-        <span className="block truncate text-xs font-medium text-[#d8d8d8]">{title}</span>
+        <span className="block truncate text-[10px] font-medium text-[#d8d8d8]">{title}</span>
         <span className="mt-0.5 block truncate font-mono text-[9px] uppercase tracking-[0.16em] text-[#444]">{subtitle}</span>
       </span>
     </a>
@@ -1002,8 +1002,8 @@ function Meter({ label, value, max, color }: { label: string; value: number; max
         <span className="text-[#3a3a3a]">{label}</span>
         <span className="font-mono" style={{ color }}>{value}</span>
       </div>
-      <div className="h-[2px] rounded-full bg-[#181818]">
-        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, (value / Math.max(max, 1)) * 100)}%`, background: color }} />
+      <div className="h-[2px] rounded-[2px] bg-[#181818]">
+        <div className="h-full rounded-[2px] transition-all duration-700" style={{ width: `${Math.min(100, (value / Math.max(max, 1)) * 100)}%`, background: color }} />
       </div>
     </div>
   )
@@ -1031,7 +1031,7 @@ function InfoCell({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="border-t border-[#181818] p-3 sm:border-l sm:border-t-0 first:sm:border-l-0">
       <div className="text-[9px] uppercase tracking-[0.18em] text-[#303030]">{label}</div>
-      <div className="mt-1 truncate text-xs text-[#888]">{value}</div>
+      <div className="mt-1 truncate text-[10px] text-[#888]">{value}</div>
     </div>
   )
 }
@@ -1039,12 +1039,12 @@ function InfoCell({ label, value }: { label: string; value: string | number }) {
 function ProjectPanel({ title, eyebrow, empty, children }: { title: string; eyebrow: string; empty: string; children: ReactNode }) {
   const hasChildren = Array.isArray(children) ? children.some(Boolean) : Boolean(children)
   return (
-    <section className="space-y-3 rounded-md border border-white/[0.08] bg-black/20 p-3">
+    <section className="space-y-3 rounded-[2px] border border-[#181818] bg-[#080808] p-3">
       <div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">{eyebrow}</p>
-        <h3 className="mt-1 text-lg font-medium text-zinc-50">{title}</h3>
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#343434]">{eyebrow}</p>
+        <h3 className="mt-1 text-[13px] font-medium text-[#e0e0e0]">{title}</h3>
       </div>
-      {hasChildren ? children : <p className="rounded-sm border border-dashed border-white/[0.08] p-3 text-sm text-zinc-500">{empty}</p>}
+      {hasChildren ? children : <p className="rounded-sm border border-dashed border-[#181818] p-3 text-[12px] text-[#555]">{empty}</p>}
     </section>
   )
 }
@@ -1067,10 +1067,10 @@ function ProjectStrip({
 }) {
   if (projects.length === 0) return null
   return (
-    <section className="space-y-3 border-t border-white/[0.06] pt-5">
+    <section className="space-y-3 border-t border-[#181818] pt-5">
       <div>
-        <h2 className="font-display text-2xl italic text-zinc-50">Project pages</h2>
-        <p className="mt-1 text-sm text-zinc-500">Approved looks that have moved into the trailer-building pipeline.</p>
+        <h2 className="text-[16px] font-semibold text-[#e0e0e0]">Project pages</h2>
+        <p className="mt-1 text-[12px] text-[#555]">Approved looks that have moved into the trailer-building pipeline.</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((project) => (
@@ -1078,17 +1078,17 @@ function ProjectStrip({
             key={project.project_id}
             type="button"
             onClick={() => onOpenProject(project.project_id)}
-            className="group overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.02] text-left transition hover:border-[#3a8a3a]/60 hover:bg-white/[0.04]"
+            className="group overflow-hidden rounded-[2px] border border-[#181818] bg-[#090909] text-left transition hover:border-[#3a8a3a]/60 hover:bg-white/[0.04]"
           >
             {project.hero_asset_path ? (
               <img src={project.hero_public_url || projectAssetUrl(project.project_id, project.hero_asset_path)} alt={project.title} className="aspect-video w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
             ) : null}
             <span className="block p-3">
-              <span className="block truncate text-sm font-medium text-zinc-100">{project.title}</span>
-              <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+              <span className="block truncate text-[12px] font-medium text-[#d4d4d4]">{project.title}</span>
+              <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-[#343434]">
                 {project.asset_count} asset{project.asset_count === 1 ? '' : 's'} · {project.character_count} character{project.character_count === 1 ? '' : 's'}
               </span>
-              <span className="mt-2 block text-xs font-medium text-[color:var(--color-accent)]">
+              <span className="mt-2 block text-[10px] font-medium text-[color:var(--color-accent)]">
                 {loadingProjectId === project.project_id ? 'Opening project…' : 'Open full project studio'}
               </span>
             </span>
@@ -1115,14 +1115,14 @@ function PendingReviewQueue({
       <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[color:var(--color-accent)]">Needs review</p>
-          <h2 className="mt-1 font-display text-2xl italic text-zinc-50">Pending review queue</h2>
-          <p className="mt-1 text-sm text-zinc-400">Click a thumbnail once to open the full image inspector, then approve or deny.</p>
+          <h2 className="mt-1 text-[16px] font-semibold text-[#e0e0e0]">Pending review queue</h2>
+          <p className="mt-1 text-[12px] text-[#777]">Click a thumbnail once to open the full image inspector, then approve or deny.</p>
         </div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">{pendingReviews.length} pending set{pendingReviews.length === 1 ? '' : 's'}</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#343434]">{pendingReviews.length} pending set{pendingReviews.length === 1 ? '' : 's'}</p>
       </div>
 
       {pendingReviews.length === 0 ? (
-        <p className="rounded-sm border border-white/[0.08] bg-black/20 p-3 text-sm text-zinc-500">No pending image reviews right now.</p>
+        <p className="rounded-sm border border-[#181818] bg-[#080808] p-3 text-[12px] text-[#555]">No pending image reviews right now.</p>
       ) : (
         <div className="grid gap-2">
           {pendingReviews.map((review) => (
@@ -1130,17 +1130,17 @@ function PendingReviewQueue({
               key={review.review_id}
               type="button"
               onClick={() => onOpenReview(review.review_id)}
-              className="group grid w-full grid-cols-[88px_1fr] items-stretch overflow-hidden rounded-md border border-white/[0.08] bg-black/25 text-left transition hover:border-[color:var(--color-accent-line)] hover:bg-white/[0.04] sm:grid-cols-[128px_1fr_auto]"
+              className="group grid w-full grid-cols-[88px_1fr] items-stretch overflow-hidden rounded-[2px] border border-[#181818] bg-[#080808] text-left transition hover:border-[color:var(--color-accent-line)] hover:bg-white/[0.04] sm:grid-cols-[128px_1fr_auto]"
             >
               <ReviewCover review={review} className="aspect-video h-full min-h-16 w-full object-cover" />
               <span className="flex min-w-0 flex-col justify-center p-3">
-                <span className="truncate text-sm font-medium text-zinc-100">{review.title || 'Untitled image review'}</span>
-                {review.notes ? <span className="mt-1 line-clamp-1 text-xs text-zinc-500">{review.notes}</span> : null}
-                <span className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+                <span className="truncate text-[12px] font-medium text-[#d4d4d4]">{review.title || 'Untitled image review'}</span>
+                {review.notes ? <span className="mt-1 line-clamp-1 text-[10px] text-[#555]">{review.notes}</span> : null}
+                <span className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#343434]">
                   {(review.pending_count ?? review.image_count)} pending · click thumbnail to inspect
                 </span>
               </span>
-              <span className="hidden items-center px-4 text-xs font-medium text-[color:var(--color-accent)] sm:flex">
+              <span className="hidden items-center px-4 text-[10px] font-medium text-[color:var(--color-accent)] sm:flex">
                 {loadingReviewId === review.review_id ? 'Loading…' : 'Review now'}
               </span>
             </button>
@@ -1163,19 +1163,19 @@ function ReviewHistory({
   const historyReviews = sortReviewsNewest(reviews.filter((review) => !hasPendingImages(review)))
 
   return (
-    <section className="space-y-3 border-t border-white/[0.06] pt-5">
+    <section className="space-y-3 border-t border-[#181818] pt-5">
       <div className="flex items-baseline justify-between gap-4">
         <div>
-          <h2 className="font-display text-2xl italic text-zinc-50">History log</h2>
-          <p className="mt-1 text-sm text-zinc-500">Older reviews and finished/published sets live here.</p>
+          <h2 className="text-[16px] font-semibold text-[#e0e0e0]">History log</h2>
+          <p className="mt-1 text-[12px] text-[#555]">Older reviews and finished/published sets live here.</p>
         </div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">Newest first</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#343434]">Newest first</p>
       </div>
 
       {historyReviews.length === 0 ? (
-        <p className="text-sm text-zinc-500">No completed image reviews yet. Approved, rejected, or published sets will appear here after they leave the pending queue.</p>
+        <p className="text-[12px] text-[#555]">No completed image reviews yet. Approved, rejected, or published sets will appear here after they leave the pending queue.</p>
       ) : (
-        <div className="divide-y divide-white/[0.06] overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.02]">
+        <div className="divide-y divide-white/[0.06] overflow-hidden rounded-[2px] border border-[#181818] bg-[#090909]">
           {historyReviews.map((review) => (
             <button
               key={review.review_id}
@@ -1186,13 +1186,13 @@ function ReviewHistory({
             >
               <ReviewCover review={review} className="aspect-video w-full rounded-sm object-contain" />
               <span className="min-w-0">
-                <span className="block truncate text-sm font-medium text-zinc-100">{review.title || 'Untitled image review'}</span>
-                {review.notes ? <span className="mt-0.5 block truncate text-xs text-zinc-500">{review.notes}</span> : null}
-                <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+                <span className="block truncate text-[12px] font-medium text-[#d4d4d4]">{review.title || 'Untitled image review'}</span>
+                {review.notes ? <span className="mt-0.5 block truncate text-[10px] text-[#555]">{review.notes}</span> : null}
+                <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-[#343434]">
                   {review.image_count} image{review.image_count === 1 ? '' : 's'} · {review.pending_count ?? 0} pending · {review.published_count ?? 0} published
                 </span>
               </span>
-              <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-zinc-200">
+              <span className="rounded-[2px] border border-[#181818] bg-white/[0.04] px-3 py-1.5 text-[10px] font-medium text-[#c0c0c0]">
                 {loadingReviewId === review.review_id ? 'Loading…' : 'View'}
               </span>
             </button>
@@ -1206,7 +1206,7 @@ function ReviewHistory({
 function ReviewCover({ review, className }: { review: ReviewSummary; className: string }) {
   if (!review.cover_asset_path) {
     return (
-      <span className={`${className} flex items-center justify-center bg-black/40 font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-700`}>
+      <span className={`${className} flex items-center justify-center bg-black/40 font-mono text-[9px] uppercase tracking-[0.2em] text-[#222]`}>
         No image
       </span>
     )

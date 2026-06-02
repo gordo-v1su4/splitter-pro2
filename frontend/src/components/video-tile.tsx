@@ -132,11 +132,11 @@ export function VideoTile({ src, poster, ariaLabel, overlay, className, playStyl
 
         <span
           className={cn(
-            'pointer-events-none absolute left-1/2 top-1/2 z-[3] flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full',
+            'pointer-events-none absolute left-1/2 top-1/2 z-[3] flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[2px]',
             'transition-all duration-200',
             subtle
               ? [
-                  'h-8 w-8 border border-white/12 bg-black/40 text-zinc-200/55',
+                  'h-8 w-8 border border-white/12 bg-black/40 text-[#c0c0c0]/55',
                   'backdrop-blur-[2px]',
                   isPlaying
                     ? 'scale-95 opacity-0 group-hover:opacity-80'
@@ -173,7 +173,7 @@ export function VideoTile({ src, poster, ariaLabel, overlay, className, playStyl
             'absolute bottom-3 right-3 z-[5] flex items-center justify-center rounded-sm',
             'transition-all duration-200 hover:text-white',
             subtle
-              ? 'h-6 w-6 border border-white/10 bg-black/45 text-zinc-400/80 hover:border-white/20'
+              ? 'h-6 w-6 border border-[#181818] bg-black/45 text-[#777]/80 hover:border-white/20'
               : 'h-7 w-7 border border-white/20 bg-black/55 text-white/90 hover:border-white/40',
             isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-90',
           )}
