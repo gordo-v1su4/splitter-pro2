@@ -197,7 +197,7 @@ export function ImageSplitWorkspace() {
               asChild
               size="sm"
               variant="secondary"
-              className="min-h-7 w-full cursor-pointer justify-start gap-2 border-dashed px-2.5 py-1.5 font-normal"
+              className="min-h-6 w-full cursor-pointer justify-start gap-2 border-dashed px-2 py-1 font-normal"
             >
               <label
                 htmlFor={uploadId}

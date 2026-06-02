@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils'
 
 const buttonVariants = cva(
   [
-    'inline-flex items-center justify-center gap-1 rounded-[2px] border font-medium uppercase tracking-[0.12em]',
+    'inline-flex items-center justify-center gap-1 rounded-[2px] border font-mono font-normal uppercase tracking-[0.16em]',
     'transition-colors duration-150 outline-none',
     'focus-visible:ring-1 focus-visible:ring-[color:var(--color-accent)] focus-visible:ring-offset-1 focus-visible:ring-offset-[#0a0a0b]',
     'disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-[#2a2a2a] disabled:bg-[#2a2a2a] disabled:text-[#6a6a6a] disabled:opacity-100',
@@ -15,8 +15,8 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: [
-          'border-[color:var(--color-accent)] bg-[color:var(--color-accent)] text-[#071007]',
-          'hover:border-[#83be78] hover:bg-[#83be78] active:bg-[#5e9655]',
+          'border-[color:var(--color-accent-line)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent)]',
+          'hover:border-[color:var(--color-accent)] hover:bg-[rgba(115,173,104,0.18)] active:bg-[rgba(115,173,104,0.24)]',
         ].join(' '),
         secondary: [
           'border-[#2a2a2a] bg-transparent text-[#666]',
@@ -32,8 +32,8 @@ const buttonVariants = cva(
         ].join(' '),
       },
       size: {
-        default: 'h-7 min-h-7 px-2.5 py-1 text-[9px] leading-none',
-        sm: 'h-6 min-h-6 px-2 py-0 text-[9px] leading-none gap-1',
+        default: 'h-6 min-h-6 px-2 py-0 text-[8px] leading-none',
+        sm: 'h-5 min-h-5 px-1.5 py-0 text-[8px] leading-none gap-1',
       },
     },
     defaultVariants: {
