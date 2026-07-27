@@ -1,14 +1,24 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
+import { UploadPanel } from './components/upload-panel'
 
 const fetchMock = vi.fn()
+const storage = new Map<string, string>()
 
 describe('App', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock)
+    storage.clear()
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+      },
+    })
   })
 
   afterEach(() => {
@@ -65,7 +75,7 @@ describe('App', () => {
               duration_seconds: 3,
               frame_rate: 30,
               frame_count: 90,
-              segment_count: 1,
+              segment_count: 4,
               created_at: new Date().toISOString(),
               reassembled_path: 'clips/reassembled.mp4',
               keyframes_zip_path: 'exports/keyframes.zip',
@@ -93,6 +103,42 @@ describe('App', () => {
                   thumbnail_path: 'thumbnails/segment-001.jpg',
                   label: '00:00:00.000 - 00:00:03.000',
                 },
+                {
+                  index: 2,
+                  start_frame: 90,
+                  end_frame: 180,
+                  frame_count: 90,
+                  start_seconds: 3,
+                  end_seconds: 6,
+                  duration_seconds: 3,
+                  clip_path: 'clips/segment-002.mp4',
+                  thumbnail_path: 'thumbnails/segment-002.jpg',
+                  label: '00:00:03.000 - 00:00:06.000',
+                },
+                {
+                  index: 3,
+                  start_frame: 180,
+                  end_frame: 270,
+                  frame_count: 90,
+                  start_seconds: 6,
+                  end_seconds: 9,
+                  duration_seconds: 3,
+                  clip_path: 'clips/segment-003.mp4',
+                  thumbnail_path: 'thumbnails/segment-003.jpg',
+                  label: '00:00:06.000 - 00:00:09.000',
+                },
+                {
+                  index: 4,
+                  start_frame: 270,
+                  end_frame: 360,
+                  frame_count: 90,
+                  start_seconds: 9,
+                  end_seconds: 12,
+                  duration_seconds: 3,
+                  clip_path: 'clips/segment-004.mp4',
+                  thumbnail_path: 'thumbnails/segment-004.jpg',
+                  label: '00:00:09.000 - 00:00:12.000',
+                },
               ],
             },
           }),
@@ -102,16 +148,50 @@ describe('App', () => {
     render(<App />)
 
     const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /collapse module panel/i }))
+    expect(screen.getByRole('button', { name: /expand module panel/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /open navigation drawer/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /open navigation drawer/i }))
     await user.click(screen.getByRole('button', { name: /video process/i }))
     const fileInput = screen.getByLabelText(/choose an mp4/i)
     await user.upload(fileInput, new File(['video'], 'sample.mp4', { type: 'video/mp4' }))
-    await user.click(screen.getByRole('button', { name: /process video/i }))
+    expect(screen.queryByRole('button', { name: /process video/i })).not.toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByText(/shot sequence ready/i)).toBeInTheDocument()
     })
     expect(screen.getByRole('img', { name: /segment 1 keyframe/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /keyframes\.zip/i })).toBeInTheDocument()
+
+    await user.click(screen.getByText(/^sheet/i, { selector: 'summary' }))
+    await user.click(screen.getByRole('button', { name: /select all/i }))
+    expect(screen.getByText(/4 selected/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /remove clip 2 for sheet/i }))
+    await user.click(screen.getByRole('button', { name: /remove clip 4 for sheet/i }))
+    expect(screen.getByText(/2 selected/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /all main keyframes/i })).toHaveAttribute(
+      'href',
+      '/api/jobs/job-1/assets/exports/contact-sheet.jpg',
+    )
+    await user.click(screen.getByRole('radio', { name: /3×3 grid/i }))
+    expect(screen.getByRole('radio', { name: /3×3 grid/i })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('link', { name: /export selected sheet/i })).toHaveAttribute(
+      'href',
+      '/api/jobs/job-1/contact-sheet?segment_indices=1&segment_indices=3&rows=3&columns=3',
+    )
+  })
+
+  it('starts processing immediately when a video is dropped', async () => {
+    const onUpload = vi.fn().mockResolvedValue(undefined)
+    render(<UploadPanel isUploading={false} onUpload={onUpload} job={null} onReset={vi.fn()} />)
+    const dropTarget = screen.getByText(/drop a file or click to browse/i).closest('label')
+    const file = new File(['video'], 'dropped.mp4', { type: 'video/mp4' })
+
+    fireEvent.drop(dropTarget as HTMLLabelElement, { dataTransfer: { files: [file] } })
+
+    await waitFor(() => expect(onUpload).toHaveBeenCalledWith(file))
+    expect(onUpload).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('button', { name: /process video/i })).not.toBeInTheDocument()
   })
 
   it('publishes images into a condensed image review board with history below', async () => {

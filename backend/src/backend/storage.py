@@ -58,6 +58,17 @@ def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
         raise last_error
 
 
+def _read_json(path: Path) -> dict[str, Any]:
+    for attempt in range(6):
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except PermissionError:
+            if attempt == 5:
+                raise
+            time.sleep(0.03 * (attempt + 1))
+    raise RuntimeError(f"Unable to read JSON file: {path}")
+
+
 def create_job(upload: UploadFile) -> JobPaths:
     settings = get_settings()
     job_id = uuid4().hex
@@ -117,7 +128,7 @@ def get_job_paths(job_id: str) -> JobPaths:
 
 def read_state(job_id: str) -> JobState:
     paths = get_job_paths(job_id)
-    payload = json.loads(paths.state_file.read_text(encoding="utf-8"))
+    payload = _read_json(paths.state_file)
     return JobState.model_validate(payload)
 
 
@@ -147,7 +158,7 @@ def load_manifest(job_id: str) -> JobManifest:
     paths = get_job_paths(job_id)
     if not paths.manifest_file.exists():
         raise HTTPException(status_code=404, detail=f"Manifest not found for job {job_id}")
-    payload = json.loads(paths.manifest_file.read_text(encoding="utf-8"))
+    payload = _read_json(paths.manifest_file)
     return JobManifest.model_validate(payload)
 
 

@@ -98,3 +98,81 @@ def test_job_result_while_processing_returns_conflict(monkeypatch, client: TestC
     job_id = response.json()["job"]["job_id"]
     result = client.get(f"/api/jobs/{job_id}/result")
     assert result.status_code == 409
+
+
+def test_custom_contact_sheet_endpoint_passes_selected_clips_and_layout(monkeypatch, client: TestClient, tmp_path) -> None:
+    app_module = importlib.import_module("backend.app")
+    sheet_path = tmp_path / "selected-sheet.jpg"
+    sheet_path.write_bytes(b"jpeg-sheet")
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        app_module,
+        "read_state",
+        lambda job_id: JobState(
+            job_id=job_id,
+            status=JobStatus.COMPLETED,
+            stage="completed",
+            source_video="clip.mp4",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        ),
+    )
+
+    def fake_build(job_id: str, segment_indices: list[int], rows: int, columns: int):
+        captured.update(
+            job_id=job_id,
+            segment_indices=segment_indices,
+            rows=rows,
+            columns=columns,
+        )
+        return sheet_path
+
+    monkeypatch.setattr(app_module, "build_custom_contact_sheet", fake_build)
+
+    response = client.get(
+        "/api/jobs/job-1/contact-sheet?segment_indices=3&segment_indices=1&rows=4&columns=5"
+    )
+
+    assert response.status_code == 200
+    assert response.content == b"jpeg-sheet"
+    assert response.headers["content-disposition"] == 'attachment; filename="splitter-selected-sheet-5x4.jpg"'
+    assert captured == {
+        "job_id": "job-1",
+        "segment_indices": [3, 1],
+        "rows": 4,
+        "columns": 5,
+    }
+
+
+def test_playhead_keyframe_endpoint_passes_segment_and_timestamp(monkeypatch, client: TestClient, tmp_path) -> None:
+    app_module = importlib.import_module("backend.app")
+    frame_path = tmp_path / "playhead-frame.jpg"
+    frame_path.write_bytes(b"jpeg-frame")
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        app_module,
+        "read_state",
+        lambda job_id: JobState(
+            job_id=job_id,
+            status=JobStatus.COMPLETED,
+            stage="completed",
+            source_video="clip.mp4",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        ),
+    )
+
+    def fake_build(job_id: str, segment_index: int, timestamp_seconds: float):
+        captured.update(job_id=job_id, segment_index=segment_index, timestamp_seconds=timestamp_seconds)
+        return frame_path
+
+    monkeypatch.setattr(app_module, "build_segment_keyframe", fake_build)
+
+    response = client.get("/api/jobs/job-1/segments/3/keyframe?timestamp_seconds=1.275")
+
+    assert response.status_code == 200
+    assert response.content == b"jpeg-frame"
+    assert response.headers["content-disposition"] == 'attachment; filename="splitter-segment-003-1.275s.jpg"'
+    assert captured == {"job_id": "job-1", "segment_index": 3, "timestamp_seconds": 1.275}

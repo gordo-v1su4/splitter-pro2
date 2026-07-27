@@ -97,6 +97,26 @@ export function assetUrl(jobId: string, assetPath: string): string {
   return `/api/jobs/${jobId}/assets/${assetPath}`
 }
 
+export function customContactSheetUrl(
+  jobId: string,
+  segmentIndices: number[],
+  rows: number,
+  columns: number,
+): string {
+  const params = new URLSearchParams()
+  for (const segmentIndex of [...segmentIndices].sort((a, b) => a - b)) {
+    params.append('segment_indices', String(segmentIndex))
+  }
+  params.set('rows', String(rows))
+  params.set('columns', String(columns))
+  return `/api/jobs/${jobId}/contact-sheet?${params.toString()}`
+}
+
+export function segmentKeyframeUrl(jobId: string, segmentIndex: number, timestampSeconds: number): string {
+  const params = new URLSearchParams({ timestamp_seconds: timestampSeconds.toFixed(3) })
+  return `/api/jobs/${jobId}/segments/${segmentIndex}/keyframe?${params.toString()}`
+}
+
 export type ImageSplitMode = 'fixed' | 'auto'
 
 export interface ImageSplitPanelMeta {

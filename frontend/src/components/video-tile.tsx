@@ -11,17 +11,14 @@ export interface VideoTileProps {
   className?: string
   /** Softer, smaller play/pause affordance (e.g. reference clip view) */
   playStyle?: 'default' | 'subtle'
+  onCurrentTimeChange?: (seconds: number) => void
 }
 
-export function VideoTile({ src, poster, ariaLabel, overlay, className, playStyle = 'default' }: VideoTileProps) {
+export function VideoTile({ src, poster, ariaLabel, overlay, className, playStyle = 'default', onCurrentTimeChange }: VideoTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(true)
   const [progress, setProgress] = useState(0)
-
-  useEffect(() => {
-    setProgress(0)
-  }, [src])
 
   useEffect(() => {
     const video = videoRef.current
@@ -46,13 +43,30 @@ export function VideoTile({ src, poster, ariaLabel, overlay, className, playStyl
       rafId = requestAnimationFrame(tick)
     }
 
+    const reportCurrentTime = () => onCurrentTimeChange?.(video.currentTime)
+
     const onPause = () => {
       setIsPlaying(false)
       cancelAnimationFrame(rafId)
       syncProgress()
+      reportCurrentTime()
     }
 
-    const onSeeked = () => syncProgress()
+    const onSeeked = () => {
+      syncProgress()
+      reportCurrentTime()
+    }
+
+    const onTimeUpdate = () => {
+      syncProgress()
+      reportCurrentTime()
+    }
+
+    const onLoadStart = () => {
+      setIsPlaying(false)
+      setProgress(0)
+      onCurrentTimeChange?.(0)
+    }
 
     const onEnded = () => {
       setIsPlaying(false)
@@ -63,7 +77,8 @@ export function VideoTile({ src, poster, ariaLabel, overlay, className, playStyl
     video.addEventListener('play', onPlay)
     video.addEventListener('pause', onPause)
     video.addEventListener('seeked', onSeeked)
-    video.addEventListener('timeupdate', syncProgress)
+    video.addEventListener('loadstart', onLoadStart)
+    video.addEventListener('timeupdate', onTimeUpdate)
     video.addEventListener('ended', onEnded)
     video.addEventListener('loadedmetadata', onSeeked)
     return () => {
@@ -71,11 +86,12 @@ export function VideoTile({ src, poster, ariaLabel, overlay, className, playStyl
       video.removeEventListener('play', onPlay)
       video.removeEventListener('pause', onPause)
       video.removeEventListener('seeked', onSeeked)
-      video.removeEventListener('timeupdate', syncProgress)
+      video.removeEventListener('loadstart', onLoadStart)
+      video.removeEventListener('timeupdate', onTimeUpdate)
       video.removeEventListener('ended', onEnded)
       video.removeEventListener('loadedmetadata', onSeeked)
     }
-  }, [src])
+  }, [onCurrentTimeChange, src])
 
   function togglePlay() {
     const video = videoRef.current

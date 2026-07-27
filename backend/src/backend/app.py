@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import shutil
 
-from fastapi import BackgroundTasks, Body, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Body, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
@@ -26,7 +26,7 @@ from .models import (
     ReviewResponse,
     SheetsStubResponse,
 )
-from .processing import process_job
+from .processing import build_custom_contact_sheet, build_segment_keyframe, process_job
 from .storage import create_job, load_manifest, read_state, resolve_asset
 
 
@@ -125,6 +125,51 @@ def create_app() -> FastAPI:
     @app.get("/api/jobs/{job_id}/assets/{asset_path:path}", tags=["Video jobs"])
     def get_job_asset(job_id: str, asset_path: str) -> FileResponse:
         return FileResponse(resolve_asset(job_id, asset_path))
+
+    @app.get(
+        "/api/jobs/{job_id}/contact-sheet",
+        response_model=None,
+        responses={400: {"model": ErrorResponse}, 404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+        tags=["Video jobs"],
+        summary="Build a custom contact sheet from selected clips",
+    )
+    def get_custom_contact_sheet(
+        job_id: str,
+        segment_indices: list[int] = Query(..., min_length=1),
+        rows: int = Query(3, ge=1, le=8),
+        columns: int = Query(3, ge=1, le=8),
+    ) -> FileResponse:
+        state = read_state(job_id)
+        if state.status != JobStatus.COMPLETED:
+            raise HTTPException(status_code=409, detail="Wait for the video job to finish before exporting a sheet.")
+        output_path = build_custom_contact_sheet(job_id, segment_indices, rows, columns)
+        return FileResponse(
+            output_path,
+            media_type="image/jpeg",
+            filename=f"splitter-selected-sheet-{columns}x{rows}.jpg",
+        )
+
+    @app.get(
+        "/api/jobs/{job_id}/segments/{segment_index}/keyframe",
+        response_model=None,
+        responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+        tags=["Video jobs"],
+        summary="Export the frame at a segment preview playhead",
+    )
+    def get_segment_keyframe(
+        job_id: str,
+        segment_index: int,
+        timestamp_seconds: float = Query(0.0, ge=0.0),
+    ) -> FileResponse:
+        state = read_state(job_id)
+        if state.status != JobStatus.COMPLETED:
+            raise HTTPException(status_code=409, detail="Wait for the video job to finish before exporting a keyframe.")
+        output_path = build_segment_keyframe(job_id, segment_index, timestamp_seconds)
+        return FileResponse(
+            output_path,
+            media_type="image/jpeg",
+            filename=f"splitter-segment-{segment_index:03d}-{timestamp_seconds:.3f}s.jpg",
+        )
 
     @app.post(
         "/api/image-split/fixed-grid",

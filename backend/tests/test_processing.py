@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 from PIL import Image
 
@@ -6,9 +7,11 @@ from backend import storage
 from backend.processing import (
     SegmentBoundary,
     build_contact_sheet,
+    evenly_spaced_segment_timestamps,
     format_seconds,
     merge_short_segments,
 )
+from backend.models import SegmentRecord
 
 
 def test_format_seconds_renders_timecode() -> None:
@@ -50,6 +53,50 @@ def test_build_contact_sheet_exports_16_by_9_canvas(tmp_path: Path) -> None:
         assert exported.size == (2000, 900)
 
 
+def test_build_contact_sheet_keeps_every_dynamic_grid_cell_16_by_9(tmp_path: Path) -> None:
+    source_path = tmp_path / "portrait.jpg"
+    Image.new("RGB", (900, 1200), (40, 120, 180)).save(source_path)
+
+    output_path = tmp_path / "contact-sheet-3x3.jpg"
+    build_contact_sheet(output_path, [source_path] * 9, columns=3, rows=3, crop_to_fill=True)
+
+    with Image.open(output_path) as exported:
+        assert exported.size == (1200, 675)
+
+
+def test_evenly_spaced_timestamps_treat_selected_clips_as_one_timeline() -> None:
+    segments = [
+        SegmentRecord(
+            index=1,
+            start_frame=0,
+            end_frame=30,
+            frame_count=30,
+            start_seconds=0.0,
+            end_seconds=1.0,
+            duration_seconds=1.0,
+            clip_path="clips/segment-001.mp4",
+            thumbnail_path="thumbnails/segment-001.jpg",
+            label="one",
+        ),
+        SegmentRecord(
+            index=2,
+            start_frame=300,
+            end_frame=390,
+            frame_count=90,
+            start_seconds=10.0,
+            end_seconds=13.0,
+            duration_seconds=3.0,
+            clip_path="clips/segment-002.mp4",
+            thumbnail_path="thumbnails/segment-002.jpg",
+            label="two",
+        ),
+    ]
+
+    timestamps = evenly_spaced_segment_timestamps(segments, [2, 1], sample_count=4, frame_rate=30.0)
+
+    assert timestamps == [0.5, 10.5, 11.5, 12.5]
+
+
 def test_atomic_write_json_retries_permission_error_once(tmp_path: Path, monkeypatch) -> None:
     target = tmp_path / "status.json"
     original_replace = Path.replace
@@ -67,3 +114,34 @@ def test_atomic_write_json_retries_permission_error_once(tmp_path: Path, monkeyp
 
     assert attempts["count"] == 2
     assert target.exists()
+
+
+def test_read_state_retries_permission_error_once(tmp_path: Path, monkeypatch) -> None:
+    target = tmp_path / "status.json"
+    target.write_text(
+        """{
+          "job_id": "test-job",
+          "status": "completed",
+          "stage": "complete",
+          "source_video": "source.mp4",
+          "created_at": "2026-07-26T12:00:00Z",
+          "updated_at": "2026-07-26T12:00:01Z"
+        }""",
+        encoding="utf-8",
+    )
+    original_read_text = Path.read_text
+    attempts = {"count": 0}
+
+    def flaky_read_text(self: Path, *args, **kwargs) -> str:
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            raise PermissionError("busy")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(storage, "get_job_paths", lambda _job_id: SimpleNamespace(state_file=target))
+    monkeypatch.setattr(Path, "read_text", flaky_read_text)
+
+    state = storage.read_state("test-job")
+
+    assert attempts["count"] == 2
+    assert state.status.value == "completed"

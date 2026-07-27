@@ -237,7 +237,7 @@ export function ImageSplitWorkspace() {
                   type="button"
                   size="sm"
                   variant={splitMode === 'fixed' ? undefined : 'secondary'}
-                  className="min-w-0 flex-1"
+                  className="min-w-0 flex-1 font-sans text-[7px] tracking-[0.08em] sm:text-[8px]"
                   onClick={() => setSplitMode('fixed')}
                 >
                   Fixed grid
@@ -246,7 +246,7 @@ export function ImageSplitWorkspace() {
                   type="button"
                   size="sm"
                   variant={splitMode === 'auto' ? undefined : 'secondary'}
-                  className="min-w-0 flex-1"
+                  className="min-w-0 flex-1 font-sans text-[7px] tracking-[0.08em] sm:text-[8px]"
                   onClick={() => setSplitMode('auto')}
                 >
                   Auto detect

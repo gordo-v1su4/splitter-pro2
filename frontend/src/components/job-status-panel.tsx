@@ -98,7 +98,10 @@ export function JobStatusPanel({
           </div>
         </div>
 
-        <Progress value={percentage} />
+        <Progress
+          value={percentage}
+          indicatorClassName={tone === 'completed' ? 'bg-[color:var(--color-accent)]' : undefined}
+        />
 
         {job ? (
           <div className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-[10px] uppercase tracking-[0.22em] text-[#555]">
@@ -130,7 +133,7 @@ export function JobStatusPanel({
               const filled =
                 progressTotal > 0
                   ? idx < Math.round((progressDone / progressTotal) * dotCount)
-                  : tone === 'working' && idx < (Date.now() / 200) % dotCount
+                  : false
               const dimmed = !filled && tone !== 'completed'
               return (
                 <span
@@ -138,7 +141,9 @@ export function JobStatusPanel({
                   className={[
                     'h-1.5 transition-colors duration-300',
                     filled || tone === 'completed'
-                      ? 'bg-zinc-500/50'
+                      ? tone === 'completed'
+                        ? 'bg-[color:var(--color-accent)]'
+                        : 'bg-zinc-500/50'
                       : dimmed
                         ? 'bg-white/[0.06]'
                         : 'bg-white/[0.06]',

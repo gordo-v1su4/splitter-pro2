@@ -1,8 +1,7 @@
 import { LoaderCircle, RefreshCcw, Upload } from 'lucide-react'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 
 import { assetUrl, type JobState } from '../lib/api'
-import { Button } from './ui/button'
 import { Card, CardContent } from './ui/card'
 import { VideoTile } from './video-tile'
 
@@ -18,14 +17,19 @@ export function UploadPanel({
   onReset: () => void
 }) {
   const inputId = useId()
+  const processingRef = useRef(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
 
-  async function submit() {
-    if (!selectedFile) {
-      return
+  async function startProcessing(file: File) {
+    if (isUploading || processingRef.current) return
+    processingRef.current = true
+    setSelectedFile(file)
+    try {
+      await onUpload(file)
+    } finally {
+      processingRef.current = false
     }
-    await onUpload(selectedFile)
   }
 
   function handleDrop(event: React.DragEvent<HTMLLabelElement>) {
@@ -33,7 +37,7 @@ export function UploadPanel({
     setIsDragging(false)
     const file = event.dataTransfer.files?.[0]
     if (file) {
-      setSelectedFile(file)
+      void startProcessing(file)
     }
   }
 
@@ -68,6 +72,7 @@ export function UploadPanel({
             'px-6 py-10 text-center transition-colors',
             'hover:border-[color:var(--color-accent-line)] hover:bg-[color:var(--color-accent-soft)]',
             isDragging ? 'border-[color:var(--color-accent-line)] bg-[color:var(--color-accent-soft)]' : '',
+            isUploading ? 'pointer-events-none opacity-70' : '',
           ].join(' ')}
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-sm border border-white/[0.1] bg-[#090909] text-[#aaa] transition-colors group-hover:border-[color:var(--color-accent-line)] group-hover:text-[color:var(--color-accent)]">
@@ -88,41 +93,27 @@ export function UploadPanel({
             className="sr-only"
             type="file"
             accept="video/*"
-            onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+            disabled={isUploading}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+              if (file) void startProcessing(file)
+            }}
           />
         </label>
 
         <div className="flex items-center justify-between gap-4 border-t border-[#181818] pt-2">
-          <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#555]">
-            {selectedFile ? (
-              <span>
-                <span className="text-[#222]">/</span> queued
-                <span className="mx-2 text-[#222]">·</span>
-                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-              </span>
-            ) : (
-              <span className="text-[#343434]">No file selected yet</span>
-            )}
+          <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.18em] text-[#4f4f4f]">
+            {isUploading ? <LoaderCircle className="h-3 w-3 shrink-0 animate-spin text-[color:var(--color-accent)]" /> : <span className="h-1.5 w-1.5 rounded-full bg-[#303030]" />}
+            <span>
+              {isUploading
+                ? 'Uploading · processing starts automatically'
+                : selectedFile
+                  ? 'Choose another file to retry'
+                  : 'Selection starts processing automatically'}
+            </span>
           </div>
-          <Button
-            type="button"
-            size="sm"
-            onClick={submit}
-            disabled={!selectedFile || isUploading}
-            className="w-full shrink-0 sm:w-auto"
-          >
-            {isUploading ? (
-              <>
-                <LoaderCircle className="h-3 w-3 shrink-0 animate-spin" />
-                <span>Uploading…</span>
-              </>
-            ) : (
-              <>
-                <span>Process video</span>
-                <span className="font-mono text-[9px] tracking-[0.2em] opacity-90">↗</span>
-              </>
-            )}
-          </Button>
+          {selectedFile ? <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.16em] text-[#343434]">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span> : null}
         </div>
       </CardContent>
     </Card>

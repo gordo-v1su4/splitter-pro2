@@ -6,24 +6,52 @@ import { JobStatusPanel } from './components/job-status-panel'
 import { ReviewWorkspace } from './components/review-workspace'
 import { SegmentCard } from './components/segment-card'
 import { UploadPanel } from './components/upload-panel'
-import { assetUrl, fetchJob, fetchJobResult, type JobManifest, type JobState, submitVideo } from './lib/api'
+import {
+  assetUrl,
+  customContactSheetUrl,
+  fetchJob,
+  fetchJobResult,
+  type JobManifest,
+  type JobState,
+  submitVideo,
+} from './lib/api'
 import { formatDuration } from './lib/utils'
 
 type WorkspaceTab = 'projects' | 'reviews' | 'video' | 'image'
 
 function App() {
   const [workspace, setWorkspace] = useState<WorkspaceTab>('projects')
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    if (window.innerWidth < 768) return true
+    try {
+      const saved = window.localStorage?.getItem('splitter.studio.sidebarCollapsed')
+      return saved == null ? false : saved === '1'
+    } catch {
+      return false
+    }
+  })
   const [job, setJob] = useState<JobState | null>(null)
   const [manifest, setManifest] = useState<JobManifest | null>(null)
+  const [selectedSegmentIndices, setSelectedSegmentIndices] = useState<number[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const pollFailureCountRef = useRef(0)
+
+  useEffect(() => {
+    try {
+      window.localStorage?.setItem('splitter.studio.sidebarCollapsed', isSidebarCollapsed ? '1' : '0')
+    } catch {
+      // Storage can be disabled; the sidebar still works for the current session.
+    }
+  }, [isSidebarCollapsed])
 
   async function loadManifest(jobId: string, attempt = 0) {
     try {
       const nextManifest = await fetchJobResult(jobId)
       startTransition(() => {
         setManifest(nextManifest)
+        setSelectedSegmentIndices([])
       })
       pollFailureCountRef.current = 0
       setError(null)
@@ -79,6 +107,7 @@ function App() {
     setIsUploading(true)
     setError(null)
     setManifest(null)
+    setSelectedSegmentIndices([])
     pollFailureCountRef.current = 0
     try {
       const createdJob = await submitVideo(file)
@@ -98,12 +127,28 @@ function App() {
   function resetJob() {
     setJob(null)
     setManifest(null)
+    setSelectedSegmentIndices([])
     setError(null)
     setIsUploading(false)
     pollFailureCountRef.current = 0
   }
 
   const hasActiveWork = job !== null
+
+  function selectWorkspace(nextWorkspace: WorkspaceTab) {
+    setWorkspace(nextWorkspace)
+    if (window.innerWidth < 768) {
+      setIsSidebarCollapsed(true)
+    }
+  }
+
+  function toggleSegmentSelection(segmentIndex: number) {
+    setSelectedSegmentIndices((current) =>
+      current.includes(segmentIndex)
+        ? current.filter((index) => index !== segmentIndex)
+        : [...current, segmentIndex].sort((a, b) => a - b),
+    )
+  }
 
   return (
     <main className="relative h-screen overflow-hidden bg-[#070707] text-[#c0c0c0]" style={{ fontFamily: "'Inter','SF Pro Display',system-ui,sans-serif" }}>
@@ -124,17 +169,22 @@ function App() {
       />
 
       <div className="relative flex h-screen w-full overflow-hidden">
-        <StudioSidebar activeTab={workspace} onSelectTab={setWorkspace} />
+        <StudioSidebar
+          activeTab={workspace}
+          collapsed={isSidebarCollapsed}
+          onToggleCollapsed={() => setIsSidebarCollapsed((current) => !current)}
+          onSelectTab={selectWorkspace}
+        />
         <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <WorkspaceHeader activeTab={workspace} job={job} manifest={manifest} reviewsHref="/docs" />
-          <div className="min-h-0 flex-1 overflow-y-auto bg-[#080808] p-4">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-[#080808] p-2 sm:p-4">
             {workspace === 'image' ? (
               <ImageSplitWorkspace />
             ) : workspace === 'projects' || workspace === 'reviews' ? (
               <ReviewWorkspace
                 view={workspace}
-                onOpenProjects={() => setWorkspace('projects')}
-                onOpenReviews={() => setWorkspace('reviews')}
+                onOpenProjects={() => selectWorkspace('projects')}
+                onOpenReviews={() => selectWorkspace('reviews')}
               />
             ) : (
               <div className="mx-auto w-full max-w-[1680px]">
@@ -152,11 +202,23 @@ function App() {
 
                 {manifest ? (
                   <section className="mt-5 space-y-4">
-                    <ShotSequenceHeader manifest={manifest} onReset={resetJob} />
+                    <ShotSequenceHeader
+                      manifest={manifest}
+                      selectedSegmentIndices={selectedSegmentIndices}
+                      onClearSelection={() => setSelectedSegmentIndices([])}
+                      onSelectAll={() => setSelectedSegmentIndices(manifest.segments.map((segment) => segment.index))}
+                      onReset={resetJob}
+                    />
 
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+                    <div className="grid gap-3 min-[540px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
                       {manifest.segments.map((segment) => (
-                        <SegmentCard key={segment.index} jobId={manifest.job_id} segment={segment} />
+                        <SegmentCard
+                          key={`${manifest.job_id}-${segment.index}`}
+                          jobId={manifest.job_id}
+                          segment={segment}
+                          selected={selectedSegmentIndices.includes(segment.index)}
+                          onToggleSelected={() => toggleSegmentSelection(segment.index)}
+                        />
                       ))}
                     </div>
                   </section>
@@ -174,9 +236,13 @@ function App() {
 
 function StudioSidebar({
   activeTab,
+  collapsed,
+  onToggleCollapsed,
   onSelectTab,
 }: {
   activeTab: WorkspaceTab
+  collapsed: boolean
+  onToggleCollapsed: () => void
   onSelectTab: (tab: WorkspaceTab) => void
 }) {
   const modules: Array<{ tab: WorkspaceTab; label: string; sub: string }> = [
@@ -186,8 +252,57 @@ function StudioSidebar({
     { tab: 'image', label: 'Split grids', sub: 'image grids · crops' },
   ]
 
+  if (collapsed) {
+    return (
+      <aside className="relative z-20 flex w-9 shrink-0 flex-col items-center overflow-visible border-r border-[#181818] bg-[#0c0c0c]">
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          title="Expand module panel"
+          aria-label="Expand module panel"
+          className="flex h-9 w-full items-center justify-center border-b border-[#181818] text-[12px] text-[#777] transition-colors hover:bg-[#131313] hover:text-[color:var(--color-accent)]"
+        >
+          »
+        </button>
+        <div className="mt-3 grid grid-cols-2 gap-[2px]">
+          <div className="h-[5px] w-[5px] bg-[#3a8a3a]" />
+          <div className="h-[5px] w-[5px] bg-[#2a2a2a]" />
+          <div className="h-[5px] w-[5px] bg-[#2a2a2a]" />
+          <div className="h-[5px] w-[5px] bg-[#3a8a3a]" />
+        </div>
+        <div className="mt-4 flex flex-1 flex-col items-center gap-2 overflow-y-auto py-1">
+          {modules.map((module) => (
+            <button
+              key={module.tab}
+              type="button"
+              onClick={() => onSelectTab(module.tab)}
+              title={`${module.label} · ${module.sub}`}
+              aria-label={`${module.label} · ${module.sub}`}
+              className={`flex h-6 w-6 items-center justify-center rounded-[2px] border transition-colors ${activeTab === module.tab ? 'border-[color:var(--color-accent)]' : 'border-transparent hover:border-[#333]'}`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${activeTab === module.tab ? 'bg-[color:var(--color-accent)]' : 'bg-[#2a2a2a]'}`} />
+            </button>
+          ))}
+        </div>
+        <a className="mb-3 font-mono text-[9px] uppercase tracking-[0.12em] text-[#444] [writing-mode:vertical-rl] hover:text-[#777]" href="/docs">
+          Docs
+        </a>
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          title="Open navigation drawer"
+          aria-label="Open navigation drawer"
+          className="group absolute left-full top-1/2 z-30 flex h-[72px] w-5 -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-r-[3px] border-y border-r border-[#242424] bg-[#0c0c0c] text-[#555] shadow-[4px_0_14px_rgba(0,0,0,0.45)] transition-[width,border-color,color,background-color] hover:w-6 hover:border-[#3a8a3a]/70 hover:bg-[#111] hover:text-[#6aae6a] focus-visible:w-6 focus-visible:border-[#3a8a3a] focus-visible:text-[#75b875] focus-visible:outline-none"
+        >
+          <span className="font-mono text-[7px] uppercase tracking-[0.14em] [writing-mode:vertical-rl]">Open</span>
+          <span className="text-[13px] leading-none transition-transform group-hover:translate-x-px">›</span>
+        </button>
+      </aside>
+    )
+  }
+
   return (
-    <aside className="flex w-52 shrink-0 flex-col border-r border-[#181818] bg-[#0c0c0c]">
+    <aside className="flex w-[min(13rem,calc(100vw-3rem))] shrink-0 flex-col border-r border-[#181818] bg-[#0c0c0c] sm:w-52">
       <div className="flex items-center gap-2 border-b border-[#181818] px-3 py-[10px]">
         <div className="grid shrink-0 grid-cols-2 gap-[2px]">
           <div className="h-[7px] w-[7px] bg-[#3a8a3a]" />
@@ -195,10 +310,19 @@ function StudioSidebar({
           <div className="h-[7px] w-[7px] bg-[#2a2a2a]" />
           <div className="h-[7px] w-[7px] bg-[#3a8a3a]" />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="truncate text-[13px] font-semibold tracking-wide text-[#e0e0e0]">Splitter Studio</div>
           <div className="text-[9px] uppercase tracking-[0.22em] text-[#3a3a3a]">Pro 02</div>
         </div>
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          title="Collapse module panel"
+          aria-label="Collapse module panel"
+          className="shrink-0 rounded-[2px] border border-transparent px-1.5 py-1 text-[12px] text-[#555] transition-colors hover:border-[#333] hover:text-[color:var(--color-accent)]"
+        >
+          «
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">
@@ -262,9 +386,9 @@ function WorkspaceHeader({
         : 'image approval, publishing, project creation'
 
   return (
-    <header className="flex shrink-0 items-center justify-between border-b border-[#181818] bg-[#0c0c0c] px-5 py-[8px]">
+    <header className="flex min-h-9 shrink-0 items-center justify-between gap-3 border-b border-[#181818] bg-[#0c0c0c] px-3 py-[8px] sm:px-5">
       <div className="flex min-w-0 items-center gap-3">
-        <span className="truncate text-[12px] font-semibold uppercase tracking-[0.18em] text-[#d0d0d0]">{title}</span>
+        <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[#d0d0d0] sm:text-[12px] sm:tracking-[0.18em]">{title}</span>
         <span className="hidden border-l border-[#222] pl-3 text-[10px] uppercase tracking-[0.18em] text-[#3a8a3a] sm:inline">{status}</span>
       </div>
       <div className="flex items-center gap-4">
@@ -340,9 +464,15 @@ function Spec({ label, value }: { label: string; value: string }) {
 
 function ShotSequenceHeader({
   manifest,
+  selectedSegmentIndices,
+  onClearSelection,
+  onSelectAll,
   onReset,
 }: {
   manifest: JobManifest
+  selectedSegmentIndices: number[]
+  onClearSelection: () => void
+  onSelectAll: () => void
   onReset: () => void
 }) {
   const exports: Array<{ label: string; href: string }> = []
@@ -358,12 +488,15 @@ function ShotSequenceHeader({
       href: assetUrl(manifest.job_id, manifest.segments_zip_path),
     })
   }
-  if (manifest.contact_sheet_path) {
-    exports.push({
-      label: 'Contact sheet',
-      href: assetUrl(manifest.job_id, manifest.contact_sheet_path),
-    })
-  }
+  const sheetLayouts = [
+    { label: '2×2', rows: 2, columns: 2 },
+    { label: '3×3', rows: 3, columns: 3 },
+    { label: '4×4', rows: 4, columns: 4 },
+    { label: '4×5', rows: 4, columns: 5 },
+    { label: '5×5', rows: 5, columns: 5 },
+  ]
+  const [selectedSheetLayoutLabel, setSelectedSheetLayoutLabel] = useState('3×3')
+  const selectedSheetLayout = sheetLayouts.find((layout) => layout.label === selectedSheetLayoutLabel) ?? sheetLayouts[1]
 
   return (
     <div className="space-y-3 border-t border-white/[0.04] pt-4">
@@ -383,7 +516,7 @@ function ShotSequenceHeader({
           </p>
         </div>
 
-        <div className="flex flex-shrink-0 flex-wrap items-center gap-x-1 font-mono text-[11px] text-[#555]/90 min-[1024px]:pt-0.5 min-[1024px]:text-right">
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-x-1 gap-y-2 font-mono text-[11px] text-[#555]/90 min-[1024px]:justify-end min-[1024px]:pt-0.5 min-[1024px]:text-right">
           {exports.map((item, i) => {
             const short =
               item.label === 'Export keyframes ZIP'
@@ -405,6 +538,75 @@ function ShotSequenceHeader({
             )
           })}
           {exports.length > 0 ? <span className="px-1 text-[#222]/80">·</span> : null}
+          {manifest.contact_sheet_path ? (
+            <details className="group relative max-sm:order-last max-sm:basis-full max-sm:w-full">
+              <summary className="cursor-pointer list-none text-[#555]/90 underline decoration-white/10 decoration-dotted underline-offset-4 transition-colors hover:text-[#aaa] [&::-webkit-details-marker]:hidden">
+                sheet <span className="text-[#333] transition-transform group-open:inline-block group-open:rotate-180">⌄</span>
+              </summary>
+              <div className="z-40 mt-2 w-full border border-[#242424] bg-[#0c0c0c] p-3 text-left shadow-2xl sm:absolute sm:right-0 sm:w-[19rem]">
+                <p className="text-[9px] uppercase tracking-[0.22em] text-[#3a3a3a]">Sheet export</p>
+                <a
+                  href={assetUrl(manifest.job_id, manifest.contact_sheet_path)}
+                  download
+                  className="mt-2 flex items-center justify-between border border-[#202020] px-2.5 py-2 text-[#888] transition-colors hover:border-[#3a3a3a] hover:text-[#c0c0c0]"
+                >
+                  <span>All main keyframes</span>
+                  <span className="text-[9px] text-[#444]">5×4 default</span>
+                </a>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] text-[#888]">Selected clips</p>
+                    <p className="mt-0.5 text-[9px] text-[#444]">Evenly sampled as one timeline</p>
+                  </div>
+                  <span className="shrink-0 text-[9px] text-[color:var(--color-accent)]">{selectedSegmentIndices.length} selected</span>
+                </div>
+                <div className="mt-2 grid grid-cols-5 gap-1" role="radiogroup" aria-label="Selected sheet grid size">
+                  {sheetLayouts.map((layout) => {
+                    const isSelected = selectedSheetLayout.label === layout.label
+                    return (
+                      <button
+                        key={layout.label}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        aria-label={`${layout.label} grid`}
+                        onClick={() => setSelectedSheetLayoutLabel(layout.label)}
+                        className={`flex h-8 items-center justify-center border text-[9px] transition-colors ${isSelected ? 'border-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent)]' : 'border-[#242424] text-[#555] hover:border-[#444] hover:text-[#999]'}`}
+                      >
+                        {layout.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="mt-2">
+                  {selectedSegmentIndices.length > 0 ? (
+                    <a
+                      href={customContactSheetUrl(
+                        manifest.job_id,
+                        selectedSegmentIndices,
+                        selectedSheetLayout.rows,
+                        selectedSheetLayout.columns,
+                      )}
+                      download
+                      title={`Export ${selectedSheetLayout.label} sheet from selected clips`}
+                      className="flex h-8 items-center justify-between border border-[color:var(--color-accent-line)] bg-[color:var(--color-accent-soft)] px-2.5 text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-accent)] transition-colors hover:border-[color:var(--color-accent)]"
+                    >
+                      <span>Export selected sheet</span>
+                      <span className="text-[8px] opacity-70">{selectedSheetLayout.rows * selectedSheetLayout.columns} frames</span>
+                    </a>
+                  ) : (
+                    <div className="flex h-8 items-center border border-[#1e1e1e] px-2.5 text-[9px] text-[#333]">Select clips below to export</div>
+                  )}
+                </div>
+                <div className="mt-3 flex items-center gap-3 border-t border-[#1c1c1c] pt-2 text-[9px]">
+                  <button type="button" onClick={onSelectAll} className="text-[#666] hover:text-[#aaa]">select all</button>
+                  <span className="text-[#222]">·</span>
+                  <button type="button" onClick={onClearSelection} disabled={selectedSegmentIndices.length === 0} className="text-[#666] hover:text-[#aaa] disabled:text-[#2f2f2f]">clear</button>
+                </div>
+              </div>
+            </details>
+          ) : null}
+          {manifest.contact_sheet_path ? <span className="px-1 text-[#222]/80">·</span> : null}
           <button
             type="button"
             onClick={onReset}

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
+import tempfile
 import zipfile
 from dataclasses import dataclass
 from datetime import timezone
@@ -14,7 +16,7 @@ from scenedetect import AdaptiveDetector, ContentDetector, SceneManager, open_vi
 
 from .config import get_settings
 from .models import JobManifest, JobStatus, SegmentRecord
-from .storage import get_job_paths, now_utc, save_manifest, update_state
+from .storage import get_job_paths, load_manifest, now_utc, save_manifest, update_state
 
 
 @dataclass(slots=True)
@@ -328,6 +330,25 @@ def extract_thumbnail(video_path: Path, output_path: Path, timestamp: float) -> 
     run_ffmpeg(command)
 
 
+def build_segment_keyframe(job_id: str, segment_index: int, timestamp_seconds: float) -> Path:
+    """Extract the exact visible playhead frame from a completed segment clip."""
+    paths = get_job_paths(job_id)
+    manifest = load_manifest(job_id)
+    segment = next((item for item in manifest.segments if item.index == segment_index), None)
+    if segment is None:
+        raise HTTPException(status_code=404, detail=f"Segment {segment_index} is not part of this job.")
+
+    frame_duration = 1.0 / manifest.frame_rate if manifest.frame_rate > 0 else 1.0 / 24.0
+    latest_frame = max(0.0, segment.duration_seconds - frame_duration)
+    timestamp = min(max(0.0, timestamp_seconds), latest_frame)
+    timestamp_ms = round(timestamp * 1000)
+    output_path = paths.job_dir / "exports" / "playhead-keyframes" / f"segment-{segment_index:03d}-{timestamp_ms:08d}ms.jpg"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if not output_path.exists():
+        extract_thumbnail(paths.job_dir / segment.clip_path, output_path, timestamp)
+    return output_path
+
+
 def reassemble_clips(job_dir: Path, clip_paths: list[Path]) -> Path:
     concat_file = job_dir / "concat.txt"
     concat_lines = [f"file '{clip_path.name}'" for clip_path in clip_paths]
@@ -376,16 +397,24 @@ def select_contact_sheet_images(image_paths: list[Path], slots: int = 20) -> lis
     return [image_paths[index] for index in sorted(selected_indexes)[:slots]]
 
 
-def build_contact_sheet(output_path: Path, image_paths: list[Path], columns: int = 5, rows: int = 4) -> Path | None:
+def build_contact_sheet(
+    output_path: Path,
+    image_paths: list[Path],
+    columns: int = 5,
+    rows: int = 4,
+    *,
+    crop_to_fill: bool = False,
+) -> Path | None:
     if not image_paths:
         return None
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    canvas_width, canvas_height = 2000, 900
+    cell_width, cell_height = 400, 225
+    canvas_width, canvas_height = columns * cell_width, rows * cell_height
     padding = 0
     gap = 0
-    slot_width = canvas_width // columns
-    slot_height = canvas_height // rows
+    slot_width = cell_width
+    slot_height = cell_height
 
     sheet = Image.new("RGB", (canvas_width, canvas_height), "#09090b")
     selected_images = select_contact_sheet_images(image_paths, slots=columns * rows)
@@ -398,7 +427,10 @@ def build_contact_sheet(output_path: Path, image_paths: list[Path], columns: int
         if slot_index < len(selected_images):
             with Image.open(selected_images[slot_index]) as source_image:
                 image = source_image.convert("RGB")
-                image = ImageOps.contain(image, (slot_width, slot_height), method=Image.Resampling.LANCZOS)
+                if crop_to_fill:
+                    image = ImageOps.fit(image, (slot_width, slot_height), method=Image.Resampling.LANCZOS)
+                else:
+                    image = ImageOps.contain(image, (slot_width, slot_height), method=Image.Resampling.LANCZOS)
                 image_x = (slot_width - image.width) // 2
                 image_y = max(0, (slot_height - image.height) // 2)
                 slot.paste(image, (image_x, image_y))
@@ -406,6 +438,86 @@ def build_contact_sheet(output_path: Path, image_paths: list[Path], columns: int
 
     sheet.save(output_path, quality=92)
     return output_path
+
+
+def evenly_spaced_segment_timestamps(
+    segments: list[SegmentRecord],
+    selected_indices: list[int],
+    sample_count: int,
+    frame_rate: float,
+) -> list[float]:
+    """Sample the selected clips as one ordered, concatenated timeline."""
+    if sample_count <= 0:
+        raise ValueError("sample_count must be positive")
+
+    selected_set = set(selected_indices)
+    selected = [segment for segment in segments if segment.index in selected_set]
+    unknown = selected_set.difference(segment.index for segment in selected)
+    if unknown:
+        raise HTTPException(status_code=400, detail="One or more selected clips are not part of this job.")
+    if not selected:
+        raise HTTPException(status_code=400, detail="Select at least one clip for the custom sheet.")
+
+    durations = [max(0.0, segment.duration_seconds) for segment in selected]
+    total_duration = sum(durations)
+    if total_duration <= 0:
+        raise HTTPException(status_code=400, detail="The selected clips do not contain usable video duration.")
+
+    frame_duration = 1.0 / frame_rate if frame_rate > 0 else 1.0 / 24.0
+    timestamps: list[float] = []
+    for sample_index in range(sample_count):
+        target = (sample_index + 0.5) * total_duration / sample_count
+        elapsed = 0.0
+        for segment_index, (segment, duration) in enumerate(zip(selected, durations, strict=True)):
+            is_last = segment_index == len(selected) - 1
+            if target < elapsed + duration or is_last:
+                local_time = min(max(0.0, target - elapsed), duration)
+                guard = min(max(frame_duration, 0.001), duration / 4.0)
+                lower = segment.start_seconds + guard
+                upper = segment.end_seconds - guard
+                timestamp = segment.start_seconds + local_time
+                if upper < lower:
+                    timestamp = segment.start_seconds + duration / 2.0
+                else:
+                    timestamp = min(max(timestamp, lower), upper)
+                timestamps.append(timestamp)
+                break
+            elapsed += duration
+    return timestamps
+
+
+def build_custom_contact_sheet(job_id: str, segment_indices: list[int], rows: int, columns: int) -> Path:
+    paths = get_job_paths(job_id)
+    manifest = load_manifest(job_id)
+    sample_count = rows * columns
+    timestamps = evenly_spaced_segment_timestamps(
+        manifest.segments,
+        segment_indices,
+        sample_count,
+        manifest.frame_rate,
+    )
+
+    selection_key = ",".join(str(index) for index in sorted(set(segment_indices)))
+    digest = hashlib.sha256(f"{rows}x{columns}:{selection_key}".encode("utf-8")).hexdigest()[:10]
+    output_path = paths.job_dir / "exports" / f"selected-sheet-{columns}x{rows}-{digest}.jpg"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory(prefix="sheet-frames-", dir=output_path.parent) as frame_dir:
+        frame_paths: list[Path] = []
+        for frame_index, timestamp in enumerate(timestamps, start=1):
+            frame_path = Path(frame_dir) / f"frame-{frame_index:03d}.jpg"
+            extract_thumbnail(paths.source_file, frame_path, timestamp)
+            frame_paths.append(frame_path)
+        built = build_contact_sheet(
+            output_path,
+            frame_paths,
+            columns=columns,
+            rows=rows,
+            crop_to_fill=True,
+        )
+    if built is None:
+        raise HTTPException(status_code=500, detail="Unable to render the selected contact sheet.")
+    return built
 
 
 def build_reconstruction_audit(
