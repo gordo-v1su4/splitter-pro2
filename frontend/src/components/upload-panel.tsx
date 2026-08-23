@@ -1,7 +1,7 @@
-import { LoaderCircle, RefreshCcw, Upload } from 'lucide-react'
+import { Hash, LoaderCircle, RefreshCcw, Scissors, Timer, Upload } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 
-import { assetUrl, type JobState } from '../lib/api'
+import { assetUrl, type JobState, type VideoSplitMode, type VideoSplitOptions } from '../lib/api'
 import { Card, CardContent } from './ui/card'
 import { VideoTile } from './video-tile'
 
@@ -12,7 +12,7 @@ export function UploadPanel({
   onReset,
 }: {
   isUploading: boolean
-  onUpload: (file: File) => Promise<void>
+  onUpload: (file: File, options: VideoSplitOptions) => Promise<void>
   job: JobState | null
   onReset: () => void
 }) {
@@ -20,13 +20,16 @@ export function UploadPanel({
   const processingRef = useRef(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [splitMode, setSplitMode] = useState<VideoSplitMode>('scenes')
+  const [targetCount, setTargetCount] = useState(10)
+  const [intervalSeconds, setIntervalSeconds] = useState(5)
 
   async function startProcessing(file: File) {
     if (isUploading || processingRef.current) return
     processingRef.current = true
     setSelectedFile(file)
     try {
-      await onUpload(file)
+      await onUpload(file, { splitMode, targetCount, intervalSeconds })
     } finally {
       processingRef.current = false
     }
@@ -57,6 +60,16 @@ export function UploadPanel({
             mp4 · mov · webm · mkv
           </span>
         </div>
+
+        <SplitModeControl
+          splitMode={splitMode}
+          targetCount={targetCount}
+          intervalSeconds={intervalSeconds}
+          disabled={isUploading}
+          onModeChange={setSplitMode}
+          onTargetCountChange={setTargetCount}
+          onIntervalSecondsChange={setIntervalSeconds}
+        />
 
         <label
           htmlFor={inputId}
@@ -120,8 +133,168 @@ export function UploadPanel({
   )
 }
 
+const splitModes: Array<{
+  value: VideoSplitMode
+  label: string
+  detail: string
+  icon: typeof Scissors
+}> = [
+  { value: 'scenes', label: 'Scene cuts', detail: 'Content-aware', icon: Scissors },
+  { value: 'count', label: 'Equal count', detail: 'Exact total', icon: Hash },
+  { value: 'interval', label: 'Time step', detail: 'Fixed seconds', icon: Timer },
+]
+
+function SplitModeControl({
+  splitMode,
+  targetCount,
+  intervalSeconds,
+  disabled,
+  onModeChange,
+  onTargetCountChange,
+  onIntervalSecondsChange,
+}: {
+  splitMode: VideoSplitMode
+  targetCount: number
+  intervalSeconds: number
+  disabled: boolean
+  onModeChange: (mode: VideoSplitMode) => void
+  onTargetCountChange: (count: number) => void
+  onIntervalSecondsChange: (seconds: number) => void
+}) {
+  return (
+    <div className="border border-[#181818] bg-[#090909] p-1.5">
+      <div className="grid grid-cols-3 gap-1" role="radiogroup" aria-label="Video split mode">
+        {splitModes.map((mode) => {
+          const Icon = mode.icon
+          const selected = splitMode === mode.value
+          return (
+            <button
+              key={mode.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              disabled={disabled}
+              onClick={() => onModeChange(mode.value)}
+              className={[
+                'group relative flex min-h-14 items-center gap-2 border px-2.5 py-2 text-left transition-all sm:px-3',
+                selected
+                  ? 'border-[color:var(--color-accent-line)] bg-[color:var(--color-accent-soft)] text-[#d5decf]'
+                  : 'border-transparent bg-[#0d0d0d] text-[#5d5d5d] hover:border-[#282828] hover:bg-[#111] hover:text-[#aaa]',
+                disabled ? 'cursor-not-allowed opacity-60' : '',
+              ].join(' ')}
+            >
+              <span
+                className={[
+                  'flex h-7 w-7 shrink-0 items-center justify-center border transition-colors',
+                  selected ? 'border-[color:var(--color-accent-line)] text-[color:var(--color-accent)]' : 'border-[#232323] text-[#555]',
+                ].join(' ')}
+              >
+                <Icon className="h-3.5 w-3.5" strokeWidth={1.6} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[11px] font-medium leading-tight text-current">{mode.label}</span>
+                <span className="mt-1 hidden font-mono text-[8px] uppercase tracking-[0.15em] text-[#494949] sm:block">{mode.detail}</span>
+              </span>
+              <span className={`absolute inset-x-2 bottom-0 h-px ${selected ? 'bg-[color:var(--color-accent)]' : 'bg-transparent'}`} />
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="mt-1 flex min-h-12 items-center border-t border-[#171717] px-3 py-2.5">
+        {splitMode === 'scenes' ? (
+          <div className="flex w-full items-center justify-between gap-4">
+            <p className="font-mono text-[9px] uppercase tracking-[0.17em] text-[#555]">
+              Adaptive detection finds visual edit points
+            </p>
+            <span className="flex shrink-0 items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-[#777]">
+              <span className="h-1.5 w-1.5 bg-[color:var(--color-accent)]" /> Auto
+            </span>
+          </div>
+        ) : splitMode === 'count' ? (
+          <SplitRange
+            label="Images"
+            value={targetCount}
+            min={2}
+            max={60}
+            step={1}
+            suffix="total"
+            description={`${targetCount} equal slices · one midpoint frame from each`}
+            disabled={disabled}
+            onChange={onTargetCountChange}
+          />
+        ) : (
+          <SplitRange
+            label="Spacing"
+            value={intervalSeconds}
+            min={1}
+            max={60}
+            step={1}
+            suffix="sec"
+            description={`One slice and image every ${intervalSeconds} seconds`}
+            disabled={disabled}
+            onChange={onIntervalSecondsChange}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SplitRange({
+  label,
+  value,
+  min,
+  max,
+  step,
+  suffix,
+  description,
+  disabled,
+  onChange,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  step: number
+  suffix: string
+  description: string
+  disabled: boolean
+  onChange: (value: number) => void
+}) {
+  return (
+    <div className="grid w-full grid-cols-[auto_minmax(90px,1fr)_auto] items-center gap-x-3 gap-y-1">
+      <label className="font-mono text-[9px] uppercase tracking-[0.17em] text-[#666]" htmlFor={`split-range-${label}`}>
+        {label}
+      </label>
+      <input
+        id={`split-range-${label}`}
+        className="splitter-range w-full accent-[color:var(--color-accent)]"
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+      <output className="min-w-14 border border-[#252525] bg-[#0c0c0c] px-2 py-1 text-right font-mono text-[10px] text-[#bbb] tabular-nums">
+        {value} <span className="text-[8px] uppercase text-[#555]">{suffix}</span>
+      </output>
+      <p className="col-span-3 font-mono text-[8px] uppercase tracking-[0.13em] text-[#3f3f3f] sm:col-start-2 sm:col-span-2">
+        {description}
+      </p>
+    </div>
+  )
+}
+
 function ActiveSourceCard({ job, onReset }: { job: JobState; onReset: () => void }) {
   const sourceVideoSrc = assetUrl(job.job_id, `source/${job.source_video}`)
+  const modeLabel = job.split_mode === 'count'
+    ? `${job.target_count} equal`
+    : job.split_mode === 'interval'
+      ? `${job.interval_seconds}s step`
+      : 'scene cuts'
 
   return (
     <Card>
@@ -154,6 +327,7 @@ function ActiveSourceCard({ job, onReset }: { job: JobState; onReset: () => void
         <div className="flex items-baseline justify-between gap-3 pt-1 font-mono text-[11px] text-[#555]">
           <p className="min-w-0 truncate text-[#aaa]">{job.source_video}</p>
           <p className="shrink-0 text-[10px] uppercase tracking-[0.22em] text-[#343434]">
+            <span className="mr-3 text-[#666]">{modeLabel}</span>
             job <span className="ml-1 text-[#777]">{job.job_id.slice(0, 8)}</span>
           </p>
         </div>

@@ -15,8 +15,8 @@ from PIL import Image, ImageOps
 from scenedetect import AdaptiveDetector, ContentDetector, SceneManager, open_video
 
 from .config import get_settings
-from .models import JobManifest, JobStatus, SegmentRecord
-from .storage import get_job_paths, load_manifest, now_utc, save_manifest, update_state
+from .models import JobManifest, JobStatus, SegmentRecord, VideoSplitMode
+from .storage import get_job_paths, load_manifest, now_utc, read_state, save_manifest, update_state
 
 
 @dataclass(slots=True)
@@ -244,6 +244,65 @@ def build_segments(video_path: Path, duration_seconds: float, frame_rate: float,
         ]
 
     return merge_short_segments(segments, settings.merge_short_scene_frames)
+
+
+def build_count_segments(
+    duration_seconds: float,
+    frame_rate: float,
+    total_frames: int,
+    target_count: int,
+) -> list[SegmentBoundary]:
+    """Divide the complete frame range into an exact number of near-equal slices."""
+    if total_frames <= 0:
+        raise ValueError("The source video does not contain any readable frames.")
+
+    segment_count = min(max(1, target_count), total_frames)
+    segments: list[SegmentBoundary] = []
+    for offset in range(segment_count):
+        start_frame = offset * total_frames // segment_count
+        end_frame = (offset + 1) * total_frames // segment_count
+        start_seconds = min(duration_seconds, start_frame / frame_rate)
+        end_seconds = duration_seconds if end_frame == total_frames else min(duration_seconds, end_frame / frame_rate)
+        segments.append(
+            SegmentBoundary(
+                index=offset + 1,
+                start_frame=start_frame,
+                end_frame=end_frame,
+                start_seconds=start_seconds,
+                end_seconds=end_seconds,
+                frame_rate=frame_rate,
+            )
+        )
+    return segments
+
+
+def build_interval_segments(
+    duration_seconds: float,
+    frame_rate: float,
+    total_frames: int,
+    interval_seconds: float,
+) -> list[SegmentBoundary]:
+    """Divide the complete frame range into fixed-duration slices, keeping a shorter tail slice."""
+    if total_frames <= 0:
+        raise ValueError("The source video does not contain any readable frames.")
+
+    interval_frames = max(1, round(interval_seconds * frame_rate))
+    segments: list[SegmentBoundary] = []
+    for start_frame in range(0, total_frames, interval_frames):
+        end_frame = min(total_frames, start_frame + interval_frames)
+        start_seconds = min(duration_seconds, start_frame / frame_rate)
+        end_seconds = duration_seconds if end_frame == total_frames else min(duration_seconds, end_frame / frame_rate)
+        segments.append(
+            SegmentBoundary(
+                index=len(segments) + 1,
+                start_frame=start_frame,
+                end_frame=end_frame,
+                start_seconds=start_seconds,
+                end_seconds=end_seconds,
+                frame_rate=frame_rate,
+            )
+        )
+    return segments
 
 
 def extract_clip(video_path: Path, output_path: Path, segment: SegmentBoundary) -> None:
@@ -544,9 +603,16 @@ def build_reconstruction_audit(
 def process_job(job_id: str) -> None:
     paths = get_job_paths(job_id)
     try:
-        update_state(job_id, status=JobStatus.PROCESSING, stage="detecting-scenes", error=None)
+        state = read_state(job_id)
+        first_stage = "detecting-scenes" if state.split_mode == VideoSplitMode.SCENES else "building-intervals"
+        update_state(job_id, status=JobStatus.PROCESSING, stage=first_stage, error=None)
         duration_seconds, frame_rate, total_frames = probe_video_stats(paths.source_file)
-        segments = build_segments(paths.source_file, duration_seconds, frame_rate, total_frames)
+        if state.split_mode == VideoSplitMode.COUNT:
+            segments = build_count_segments(duration_seconds, frame_rate, total_frames, state.target_count)
+        elif state.split_mode == VideoSplitMode.INTERVAL:
+            segments = build_interval_segments(duration_seconds, frame_rate, total_frames, state.interval_seconds)
+        else:
+            segments = build_segments(paths.source_file, duration_seconds, frame_rate, total_frames)
         update_state(
             job_id,
             stage="extracting-segments",
@@ -612,6 +678,9 @@ def process_job(job_id: str) -> None:
             frame_rate=frame_rate,
             frame_count=total_frames,
             segment_count=len(records),
+            split_mode=state.split_mode,
+            target_count=state.target_count,
+            interval_seconds=state.interval_seconds,
             segments=records,
             reassembled_path=(
                 reassembled_path.relative_to(paths.job_dir).as_posix() if reassembled_path else None

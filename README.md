@@ -6,7 +6,13 @@
 
 ![Example contact sheet from a completed job](docs/contact-sheet-example.webp)
 
-Splitter Pro 2 is a local-first video review app that detects hard cuts, splits them into scene clips, and renders a storyboard with a still image plus previewable clip for every segment.
+Splitter Pro 2 is a local-first video review app that splits a video by detected scene cuts, an exact number of equal slices, or a fixed time step. It renders a storyboard with one stable midpoint image plus a previewable clip for every segment.
+
+The video page offers three sampling modes before upload:
+
+- **Scene cuts** — PySceneDetect finds visual edit points automatically.
+- **Equal count** — creates an exact total (for example 10) across the complete video and extracts the midpoint image from every equal slice.
+- **Time step** — creates one slice and midpoint image every selected number of seconds, with a shorter final slice when needed.
 
 ## Stack
 

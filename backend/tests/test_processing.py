@@ -6,7 +6,9 @@ from PIL import Image
 from backend import storage
 from backend.processing import (
     SegmentBoundary,
+    build_count_segments,
     build_contact_sheet,
+    build_interval_segments,
     evenly_spaced_segment_timestamps,
     format_seconds,
     merge_short_segments,
@@ -36,6 +38,24 @@ def test_thumbnail_seconds_targets_midshot() -> None:
     seg = SegmentBoundary(1, 0, 300, 0.0, 10.0, fps)
     ts = seg.thumbnail_seconds
     assert 4.5 < ts < 5.5
+
+
+def test_count_segments_cover_every_frame_in_exact_equal_total() -> None:
+    segments = build_count_segments(duration_seconds=10.0, frame_rate=10.0, total_frames=100, target_count=6)
+
+    assert len(segments) == 6
+    assert segments[0].start_frame == 0
+    assert segments[-1].end_frame == 100
+    assert sum(segment.frame_count for segment in segments) == 100
+    assert max(segment.frame_count for segment in segments) - min(segment.frame_count for segment in segments) <= 1
+
+
+def test_interval_segments_keep_short_tail_and_cover_every_frame() -> None:
+    segments = build_interval_segments(duration_seconds=10.0, frame_rate=10.0, total_frames=100, interval_seconds=3.0)
+
+    assert [segment.frame_count for segment in segments] == [30, 30, 30, 10]
+    assert segments[-1].end_seconds == 10.0
+    assert sum(segment.frame_count for segment in segments) == 100
 
 
 def test_build_contact_sheet_exports_16_by_9_canvas(tmp_path: Path) -> None:

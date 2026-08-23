@@ -13,6 +13,7 @@ import {
   fetchJobResult,
   type JobManifest,
   type JobState,
+  type VideoSplitOptions,
   submitVideo,
 } from './lib/api'
 import { formatDuration } from './lib/utils'
@@ -103,14 +104,14 @@ function App() {
     }
   }, [job])
 
-  async function handleUpload(file: File) {
+  async function handleUpload(file: File, options: VideoSplitOptions) {
     setIsUploading(true)
     setError(null)
     setManifest(null)
     setSelectedSegmentIndices([])
     pollFailureCountRef.current = 0
     try {
-      const createdJob = await submitVideo(file)
+      const createdJob = await submitVideo(file, options)
       startTransition(() => {
         setJob(createdJob)
       })
@@ -372,7 +373,7 @@ function WorkspaceHeader({
   manifest: JobManifest | null
   reviewsHref: string
 }) {
-  const title = activeTab === 'video' ? 'Scene frame detection' : activeTab === 'image' ? 'Image grid splitter' : activeTab === 'projects' ? 'Projects workspace' : 'Reviews queue'
+  const title = activeTab === 'video' ? 'Video frame extraction' : activeTab === 'image' ? 'Image grid splitter' : activeTab === 'projects' ? 'Projects workspace' : 'Reviews queue'
   const status = activeTab === 'video'
     ? manifest
       ? `${manifest.segment_count} frames · contact sheet ready`
@@ -410,23 +411,23 @@ function HeroFull() {
       <div className="space-y-5">
         <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.28em] text-[#555]">
           <span className="h-px w-8 bg-zinc-700" />
-          <span>Scene · Detect · Split</span>
+          <span>Choose · Sample · Split</span>
         </div>
         <h1 className="text-[26px] font-semibold leading-none tracking-[-0.02em] text-[#e0e0e0]">
-          Every cut,
+          Every frame,
           <br />
-          <span className="text-[#aaa]">on its own</span>
+          <span className="text-[#aaa]">on your terms</span>
           <span className="text-[color:var(--color-accent)]">.</span>
         </h1>
         <p className="max-w-xl text-[14px] leading-relaxed text-[#777]">
-          Drop a video. PySceneDetect finds the hard cuts, ffmpeg slices each scene
-          frame-accurately, and the first frame of every shot becomes a thumbnail you can
-          scrub through. Local-first. Disk-backed. Zero cloud.
+          Choose scene cuts, an exact number of evenly spaced frames, or a fixed time step.
+          ffmpeg slices the whole video frame-accurately and gives every slice a stable
+          midpoint image you can review. Local-first. Disk-backed. Zero cloud.
         </p>
       </div>
 
       <aside className="flex flex-col justify-end gap-1 self-end font-mono text-[11px] uppercase tracking-[0.22em] text-[#555]">
-        <Spec label="Detector" value="PySceneDetect · Adaptive" />
+        <Spec label="Sampling" value="Scene · Count · Time" />
         <Spec label="Splitter" value="ffmpeg · frame accurate" />
         <Spec label="Output" value="Clips · Stills · Sheet" />
         <Spec label="Storage" value="Per-job folder" />
@@ -440,7 +441,7 @@ function HeroCompact() {
     <header className="mt-5 flex flex-wrap items-baseline justify-between gap-4 border-b border-[#181818] pb-4">
       <div className="flex items-baseline gap-4">
         <h1 className="text-[16px] font-semibold leading-none tracking-tight text-[#e0e0e0] sm:text-[16px] font-semibold">
-          Every cut, <span className="text-[#777]">on its own</span>
+          Every frame, <span className="text-[#777]">on your terms</span>
           <span className="text-[color:var(--color-accent)]">.</span>
         </h1>
       </div>
@@ -460,6 +461,12 @@ function Spec({ label, value }: { label: string; value: string }) {
       <span className="text-[#aaa]">{value}</span>
     </div>
   )
+}
+
+function splitModeLabel(manifest: JobManifest) {
+  if (manifest.split_mode === 'count') return `${manifest.target_count} equal`
+  if (manifest.split_mode === 'interval') return `${manifest.interval_seconds}s step`
+  return 'scene cuts'
 }
 
 function ShotSequenceHeader({
@@ -512,7 +519,7 @@ function ShotSequenceHeader({
             {manifest.source_video}
           </h2>
           <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[#343434]">
-            {manifest.segment_count} seg · {formatDuration(manifest.duration_seconds)} · {manifest.frame_count} fr
+            {manifest.segment_count} seg · {splitModeLabel(manifest)} · {formatDuration(manifest.duration_seconds)} · {manifest.frame_count} fr
           </p>
         </div>
 
@@ -635,7 +642,7 @@ function EmptyShotSequence() {
         </div>
         <ol className="grid gap-px bg-white/[0.06] sm:grid-cols-3">
           <Step index="01" title="Drop" body="Upload a local video file. Stored in its own job folder." />
-          <Step index="02" title="Detect" body="Adaptive scene detection finds every hard cut." />
+          <Step index="02" title="Sample" body="Choose scene cuts, an exact frame count, or a fixed time step." />
           <Step index="03" title="Review" body="Scrub clips, grab thumbnails, export ZIPs." />
         </ol>
       </div>

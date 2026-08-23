@@ -189,9 +189,33 @@ describe('App', () => {
 
     fireEvent.drop(dropTarget as HTMLLabelElement, { dataTransfer: { files: [file] } })
 
-    await waitFor(() => expect(onUpload).toHaveBeenCalledWith(file))
+    await waitFor(() => expect(onUpload).toHaveBeenCalledWith(file, {
+      splitMode: 'scenes',
+      targetCount: 10,
+      intervalSeconds: 5,
+    }))
     expect(onUpload).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('button', { name: /process video/i })).not.toBeInTheDocument()
+  })
+
+  it('passes an exact evenly distributed image count with the upload', async () => {
+    const onUpload = vi.fn().mockResolvedValue(undefined)
+    render(<UploadPanel isUploading={false} onUpload={onUpload} job={null} onReset={vi.fn()} />)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('radio', { name: /equal count/i }))
+    fireEvent.change(screen.getByLabelText(/^images$/i), { target: { value: '12' } })
+    await user.upload(
+      screen.getByLabelText(/choose an mp4/i),
+      new File(['video'], 'twelve-frames.mp4', { type: 'video/mp4' }),
+    )
+
+    await waitFor(() => expect(onUpload).toHaveBeenCalledWith(expect.any(File), {
+      splitMode: 'count',
+      targetCount: 12,
+      intervalSeconds: 5,
+    }))
+    expect(screen.getByText(/12 equal slices/i)).toBeInTheDocument()
   })
 
   it('publishes images into a condensed image review board with history below', async () => {

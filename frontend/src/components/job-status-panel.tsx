@@ -38,7 +38,7 @@ const toneStyles: Record<Tone, { dot: string; text: string; headline: string; su
     dot: 'bg-zinc-500/70',
     text: 'text-[#777]/90',
     headline: 'Done',
-    sub: 'Shot sequence rendered below.',
+    sub: 'Frame sequence rendered below.',
   },
   failed: {
     dot: 'bg-red-400',
@@ -121,9 +121,12 @@ export function JobStatusPanel({
             ) : null}
             {job.segment_count ? (
               <span>
-                cuts <span className="ml-2 text-[#aaa]">{job.segment_count}</span>
+                slices <span className="ml-2 text-[#aaa]">{job.segment_count}</span>
               </span>
             ) : null}
+            <span>
+              mode <span className="ml-2 text-[#aaa]">{job.split_mode === 'count' ? 'equal count' : job.split_mode === 'interval' ? 'time step' : 'scene cuts'}</span>
+            </span>
           </div>
         ) : null}
 

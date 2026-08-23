@@ -1,4 +1,11 @@
 export type JobStatus = 'queued' | 'processing' | 'completed' | 'failed'
+export type VideoSplitMode = 'scenes' | 'count' | 'interval'
+
+export interface VideoSplitOptions {
+  splitMode: VideoSplitMode
+  targetCount: number
+  intervalSeconds: number
+}
 
 export interface SegmentRecord {
   index: number
@@ -30,6 +37,9 @@ export interface JobManifest {
   frame_rate: number
   frame_count: number
   segment_count: number
+  split_mode: VideoSplitMode
+  target_count: number
+  interval_seconds: number
   created_at: string
   reassembled_path: string | null
   keyframes_zip_path: string | null
@@ -46,6 +56,9 @@ export interface JobState {
   source_video: string
   created_at: string
   updated_at: string
+  split_mode: VideoSplitMode
+  target_count: number
+  interval_seconds: number
   error: string | null
   duration_seconds: number | null
   segment_count: number
@@ -71,9 +84,12 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return (await response.json()) as T
 }
 
-export async function submitVideo(file: File): Promise<JobState> {
+export async function submitVideo(file: File, options: VideoSplitOptions): Promise<JobState> {
   const formData = new FormData()
   formData.append('file', file)
+  formData.append('split_mode', options.splitMode)
+  formData.append('target_count', String(options.targetCount))
+  formData.append('interval_seconds', String(options.intervalSeconds))
   const response = await fetch('/api/jobs', {
     method: 'POST',
     body: formData,

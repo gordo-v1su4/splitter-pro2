@@ -18,6 +18,7 @@ from .models import (
     JobResultResponse,
     JobState,
     JobStatus,
+    VideoSplitMode,
     ProjectListResponse,
     ProjectRefinementRequest,
     ProjectResponse,
@@ -87,11 +88,19 @@ def create_app() -> FastAPI:
     async def create_job_endpoint(
         background_tasks: BackgroundTasks,
         file: UploadFile = File(...),
+        split_mode: VideoSplitMode = Form(VideoSplitMode.SCENES),
+        target_count: int = Form(10, ge=2, le=60),
+        interval_seconds: float = Form(5.0, ge=0.5, le=300.0),
     ) -> JobCreatedResponse:
         if not file.filename:
             raise HTTPException(status_code=400, detail="A video file is required.")
 
-        paths = create_job(file)
+        paths = create_job(
+            file,
+            split_mode=split_mode,
+            target_count=target_count,
+            interval_seconds=interval_seconds,
+        )
         with paths.source_file.open("wb") as handle:
             shutil.copyfileobj(file.file, handle)
         await file.close()

@@ -96,3 +96,35 @@ def test_real_video_pipeline(client: TestClient, tmp_path: Path) -> None:
     mean_bgr = decoded.mean(axis=(0, 1))
     assert mean_bgr[2] > mean_bgr[1]
     assert mean_bgr[2] > mean_bgr[0]
+
+
+def test_real_video_pipeline_extracts_exact_even_count(client: TestClient, tmp_path: Path) -> None:
+    video_path = tmp_path / "even-sample.mp4"
+    build_sample_video(video_path)
+
+    with video_path.open("rb") as handle:
+        response = client.post(
+            "/api/jobs",
+            files={"file": ("even-sample.mp4", handle, "video/mp4")},
+            data={"split_mode": "count", "target_count": "10", "interval_seconds": "5"},
+        )
+
+    assert response.status_code == 200
+    job_id = response.json()["job"]["job_id"]
+    status_payload: dict[str, object] = {}
+    for _ in range(30):
+        status_payload = client.get(f"/api/jobs/{job_id}").json()
+        if status_payload["status"] == "completed":
+            break
+        time.sleep(0.1)
+
+    assert status_payload["status"] == "completed"
+    manifest = client.get(f"/api/jobs/{job_id}/result").json()["manifest"]
+    assert manifest["split_mode"] == "count"
+    assert manifest["target_count"] == 10
+    assert manifest["segment_count"] == 10
+    assert sum(segment["frame_count"] for segment in manifest["segments"]) == manifest["frame_count"]
+    assert all(
+        client.get(f"/api/jobs/{job_id}/assets/{segment['thumbnail_path']}").status_code == 200
+        for segment in manifest["segments"]
+    )

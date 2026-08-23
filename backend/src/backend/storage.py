@@ -12,7 +12,7 @@ from uuid import uuid4
 from fastapi import HTTPException, UploadFile
 
 from .config import get_settings
-from .models import JobManifest, JobState, JobStatus
+from .models import JobManifest, JobState, JobStatus, VideoSplitMode
 
 
 @dataclass(slots=True)
@@ -69,7 +69,13 @@ def _read_json(path: Path) -> dict[str, Any]:
     raise RuntimeError(f"Unable to read JSON file: {path}")
 
 
-def create_job(upload: UploadFile) -> JobPaths:
+def create_job(
+    upload: UploadFile,
+    *,
+    split_mode: VideoSplitMode = VideoSplitMode.SCENES,
+    target_count: int = 10,
+    interval_seconds: float = 5.0,
+) -> JobPaths:
     settings = get_settings()
     job_id = uuid4().hex
     job_dir = settings.data_dir / job_id
@@ -98,6 +104,9 @@ def create_job(upload: UploadFile) -> JobPaths:
             source_video=source_file.name,
             created_at=created,
             updated_at=created,
+            split_mode=split_mode,
+            target_count=target_count,
+            interval_seconds=interval_seconds,
         ),
         paths=paths,
     )

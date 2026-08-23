@@ -100,6 +100,32 @@ def test_job_result_while_processing_returns_conflict(monkeypatch, client: TestC
     assert result.status_code == 409
 
 
+def test_create_job_accepts_equal_count_sampling_options(monkeypatch, client: TestClient) -> None:
+    app_module = importlib.import_module("backend.app")
+    captured: dict[str, object] = {}
+
+    def capture_job(job_id: str) -> None:
+        from backend.storage import read_state
+
+        state = read_state(job_id)
+        captured.update(
+            split_mode=state.split_mode.value,
+            target_count=state.target_count,
+            interval_seconds=state.interval_seconds,
+        )
+
+    monkeypatch.setattr(app_module, "process_job", capture_job)
+    response = client.post(
+        "/api/jobs",
+        files={"file": ("clip.mp4", b"video", "video/mp4")},
+        data={"split_mode": "count", "target_count": "10", "interval_seconds": "7"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["job"]["split_mode"] == "count"
+    assert captured == {"split_mode": "count", "target_count": 10, "interval_seconds": 7.0}
+
+
 def test_custom_contact_sheet_endpoint_passes_selected_clips_and_layout(monkeypatch, client: TestClient, tmp_path) -> None:
     app_module = importlib.import_module("backend.app")
     sheet_path = tmp_path / "selected-sheet.jpg"

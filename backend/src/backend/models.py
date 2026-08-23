@@ -13,6 +13,12 @@ class JobStatus(StrEnum):
     FAILED = "failed"
 
 
+class VideoSplitMode(StrEnum):
+    SCENES = "scenes"
+    COUNT = "count"
+    INTERVAL = "interval"
+
+
 class SegmentRecord(BaseModel):
     index: int
     start_frame: int
@@ -43,6 +49,9 @@ class JobManifest(BaseModel):
     frame_rate: float
     frame_count: int
     segment_count: int
+    split_mode: VideoSplitMode = VideoSplitMode.SCENES
+    target_count: int = 10
+    interval_seconds: float = 5.0
     segments: list[SegmentRecord]
     reassembled_path: str | None = None
     keyframes_zip_path: str | None = None
@@ -59,6 +68,9 @@ class JobState(BaseModel):
     source_video: str
     created_at: datetime
     updated_at: datetime
+    split_mode: VideoSplitMode = VideoSplitMode.SCENES
+    target_count: int = 10
+    interval_seconds: float = 5.0
     error: str | None = None
     duration_seconds: float | None = None
     segment_count: int = 0
