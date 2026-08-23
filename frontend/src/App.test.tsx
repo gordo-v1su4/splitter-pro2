@@ -5,6 +5,7 @@ import { useState } from 'react'
 
 import App from './App'
 import { AccessGate } from './components/access-gate'
+import { ImageSplitWorkspace } from './components/image-split-workspace'
 import { ReviewWorkspace } from './components/review-workspace'
 import { UploadPanel } from './components/upload-panel'
 
@@ -232,6 +233,83 @@ describe('App', () => {
       intervalSeconds: 5,
     }))
     expect(screen.getByText(/12 equal slices/i)).toBeInTheDocument()
+  })
+
+  it('keeps the video split-mode detail rail at one fixed height', async () => {
+    const user = userEvent.setup()
+    render(<UploadPanel isUploading={false} onUpload={vi.fn()} job={null} onReset={vi.fn()} />)
+
+    const detailRail = screen.getByTestId('split-mode-detail')
+    expect(detailRail).toHaveClass('h-[68px]')
+    await user.click(screen.getByRole('radio', { name: /equal count/i }))
+    expect(screen.getByTestId('split-mode-detail')).toBe(detailRail)
+    await user.click(screen.getByRole('radio', { name: /time step/i }))
+    expect(screen.getByTestId('split-mode-detail')).toBe(detailRail)
+    await user.click(screen.getByRole('radio', { name: /scene cuts/i }))
+    expect(screen.getByTestId('split-mode-detail')).toBe(detailRail)
+  })
+
+  it('splits multiple source images and downloads only selected panels', async () => {
+    const RealURL = URL
+    class TestURL extends RealURL {
+      static createObjectURL = vi.fn(() => `blob:test-${TestURL.createObjectURL.mock.calls.length}`)
+      static revokeObjectURL = vi.fn()
+    }
+    vi.stubGlobal('URL', TestURL)
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        manifest: {
+          batch_id: 'batch-1',
+          mode: 'fixed',
+          rows: 2,
+          cols: 2,
+          gutter_px: 0,
+          sensitivity: null,
+          source_filenames: ['alpha.png', 'beta.png'],
+          total_sources: 2,
+          panels: [
+            { index: 1, label: 'alpha.png · Panel 1', asset_path: '000/panel-001.png', source_index: 0, source_filename: 'alpha.png' },
+            { index: 2, label: 'alpha.png · Panel 2', asset_path: '000/panel-002.png', source_index: 0, source_filename: 'alpha.png' },
+            { index: 3, label: 'beta.png · Panel 1', asset_path: '001/panel-001.png', source_index: 1, source_filename: 'beta.png' },
+            { index: 4, label: 'beta.png · Panel 2', asset_path: '001/panel-002.png', source_index: 1, source_filename: 'beta.png' },
+          ],
+        },
+      })))
+      .mockResolvedValueOnce(new Response(new Blob(['zip']), { status: 200, headers: { 'Content-Type': 'application/zip' } }))
+
+    render(<ImageSplitWorkspace />)
+    const user = userEvent.setup()
+    await user.upload(screen.getByLabelText(/cinematic shot grid upload/i), [
+      new File(['alpha'], 'alpha.png', { type: 'image/png' }),
+      new File(['beta'], 'beta.png', { type: 'image/png' }),
+    ])
+
+    expect(screen.getByRole('img', { name: /source 1: alpha\.png/i })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /source 2: beta\.png/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /run splitter/i }))
+    await screen.findByText(/2 source\(s\) · 4 panels/i)
+    expect(screen.getByText('4 selected')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /remove alpha\.png · panel 1 for download/i }))
+    expect(screen.getByText('3 selected')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /download selected/i }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/image-split/batch-1/export-selected.zip',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          asset_paths: ['000/panel-002.png', '001/panel-001.png', '001/panel-002.png'],
+        }),
+      }),
+    ))
+    expect(anchorClick).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('link', { name: /download every panel/i })).toHaveAttribute(
+      'href',
+      '/api/image-split/batch-1/export.zip',
+    )
   })
 
   it('unlocks the private workspace through the server gate', async () => {

@@ -201,7 +201,10 @@ function SplitModeControl({
         })}
       </div>
 
-      <div className="mt-1 flex min-h-12 items-center border-t border-[#171717] px-3 py-2.5">
+      <div
+        className="mt-1 flex h-[68px] items-center overflow-hidden border-t border-[#171717] px-3 py-2.5"
+        data-testid="split-mode-detail"
+      >
         {splitMode === 'scenes' ? (
           <div className="flex w-full items-center justify-between gap-4">
             <p className="font-mono text-[9px] uppercase tracking-[0.17em] text-[#555]">

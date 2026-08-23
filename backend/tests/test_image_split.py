@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import zipfile
 
 from PIL import Image
 
@@ -88,3 +89,33 @@ def test_batch_fixed_grid_nested_panel_paths_and_zip(client):
     assert zipped.status_code == 200
     assert zipped.headers["content-type"] == "application/zip"
     assert zipped.content[:2] == b"PK"
+
+    selected_assets = [manifest["panels"][1]["asset_path"], manifest["panels"][6]["asset_path"]]
+    selected = client.post(
+        f"/api/image-split/{batch_id}/export-selected.zip",
+        json={"asset_paths": selected_assets},
+    )
+    assert selected.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(selected.content)) as archive:
+        assert archive.namelist() == selected_assets
+
+
+def test_selected_panel_export_rejects_empty_or_unsafe_paths(client):
+    response = client.post(
+        "/api/image-split/batch/fixed-grid",
+        files=[("files", ("a.png", _png_bytes(), "image/png"))],
+        data={"rows": 2, "cols": 2, "gutter_px": 0},
+    )
+    batch_id = response.json()["manifest"]["batch_id"]
+
+    empty = client.post(
+        f"/api/image-split/{batch_id}/export-selected.zip",
+        json={"asset_paths": []},
+    )
+    assert empty.status_code == 422
+
+    unsafe = client.post(
+        f"/api/image-split/{batch_id}/export-selected.zip",
+        json={"asset_paths": ["../panel-001.png"]},
+    )
+    assert unsafe.status_code == 400

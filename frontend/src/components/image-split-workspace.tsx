@@ -1,7 +1,8 @@
-import { Download, ImageIcon, LayoutGrid, LoaderCircle } from 'lucide-react'
-import { startTransition, useEffect, useId, useMemo, useState } from 'react'
+import { Check, Download, ImageIcon, Images, LayoutGrid, LoaderCircle, X } from 'lucide-react'
+import { startTransition, useEffect, useId, useState } from 'react'
 
 import {
+  downloadImageSplitSelection,
   imageSplitPanelAssetUrl,
   imageSplitZipUrl,
   recordGoogleSheetsUrl,
@@ -63,7 +64,7 @@ function formatSplitError(cause: unknown): string {
 export function ImageSplitWorkspace() {
   const uploadId = useId()
   const [imageFiles, setImageFiles] = useState<File[]>([])
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [sourcePreviews, setSourcePreviews] = useState<Array<{ file: File; url: string }>>([])
 
   const [splitMode, setSplitMode] = useState<SplitModeUi>('fixed')
   const [rows, setRows] = useState(2)
@@ -73,18 +74,15 @@ export function ImageSplitWorkspace() {
   const [sheetsUrl, setSheetsUrl] = useState('')
 
   const [manifest, setManifest] = useState<ImageSplitBatchManifest | null>(null)
+  const [selectedAssetPaths, setSelectedAssetPaths] = useState<Set<string>>(new Set())
   const [isBusy, setIsBusy] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const first = imageFiles[0]
-    if (!first) {
-      setPreviewUrl(null)
-      return undefined
-    }
-    const objectUrl = URL.createObjectURL(first)
-    setPreviewUrl(objectUrl)
-    return () => URL.revokeObjectURL(objectUrl)
+    const previews = imageFiles.map((file) => ({ file, url: URL.createObjectURL(file) }))
+    setSourcePreviews(previews)
+    return () => previews.forEach(({ url }) => URL.revokeObjectURL(url))
   }, [imageFiles])
 
   useEffect(() => {
@@ -113,12 +111,19 @@ export function ImageSplitWorkspace() {
     }
   }, [imageFiles])
 
-  const panelCountLabel = useMemo(() => {
-    if (!manifest) {
-      return '0 PANELS'
-    }
-    return `${manifest.total_sources} source(s) · ${manifest.panels.length} panels`.toUpperCase()
-  }, [manifest])
+  const panelCountLabel = manifest
+    ? `${manifest.total_sources} source(s) · ${manifest.panels.length} panels`.toUpperCase()
+    : '0 PANELS'
+
+  const selectedCount = selectedAssetPaths.size
+  const allPanelsSelected = Boolean(manifest?.panels.length) && selectedCount === manifest?.panels.length
+
+  function replaceImageFiles(files: File[]) {
+    setImageFiles(files.slice(0, 32))
+    setManifest(null)
+    setSelectedAssetPaths(new Set())
+    setError(files.length > 32 ? 'Only the first 32 images were added.' : null)
+  }
 
   async function handleRun() {
     if (!imageFiles.length) {
@@ -140,7 +145,10 @@ export function ImageSplitWorkspace() {
           ? await splitImageBatchFixedGrid(imageFiles, rows, cols, gutterPx)
           : await splitImageBatchAuto(imageFiles, gutterPx, sensitivity)
 
-      startTransition(() => setManifest(nextManifest))
+      startTransition(() => {
+        setManifest(nextManifest)
+        setSelectedAssetPaths(new Set(nextManifest.panels.map((panel) => panel.asset_path)))
+      })
     } catch (cause) {
       setError(formatSplitError(cause))
     } finally {
@@ -156,7 +164,45 @@ export function ImageSplitWorkspace() {
     }
     const images = Array.from(incoming).filter((f) => f.type.startsWith('image/'))
     if (images.length) {
-      setImageFiles(images)
+      replaceImageFiles(images)
+    }
+  }
+
+  function togglePanel(assetPath: string) {
+    setSelectedAssetPaths((current) => {
+      const next = new Set(current)
+      if (next.has(assetPath)) {
+        next.delete(assetPath)
+      } else {
+        next.add(assetPath)
+      }
+      return next
+    })
+  }
+
+  async function handleExportSelected() {
+    if (!manifest || !selectedCount || isExporting) {
+      return
+    }
+    setIsExporting(true)
+    setError(null)
+    try {
+      const orderedSelection = manifest.panels
+        .filter((panel) => selectedAssetPaths.has(panel.asset_path))
+        .map((panel) => panel.asset_path)
+      const blob = await downloadImageSplitSelection(manifest.batch_id, orderedSelection)
+      const objectUrl = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = objectUrl
+      anchor.download = `splitter-pro-selected-panels-${manifest.batch_id}.zip`
+      document.body.append(anchor)
+      anchor.click()
+      anchor.remove()
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0)
+    } catch (cause) {
+      setError(formatSplitError(cause))
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -165,33 +211,38 @@ export function ImageSplitWorkspace() {
       <aside className="space-y-4 lg:sticky lg:top-8 lg:self-start">
         <Card>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.28em] text-[#555]">
-              <span>Source</span>
-              <span className="text-[#343434]">PNG · JPG · WebP</span>
+            <div className="flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-[0.28em] text-[#555]">
+              <span>Source batch</span>
+              <span className={imageFiles.length ? 'text-[color:var(--color-accent)]' : 'text-[#343434]'}>
+                {imageFiles.length ? `${imageFiles.length} queued` : 'up to 32'}
+              </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              {previewUrl ? (
-                <figure className="col-span-2 overflow-hidden rounded-sm border border-[#181818] bg-black/40">
-                  <img
-                    alt="Selected source thumbnail"
-                    className="aspect-video w-full object-contain bg-black"
-                    draggable={false}
-                    src={previewUrl}
-                  />
-                  {imageFiles.length > 1 ? (
-                    <figcaption className="border-t border-[#181818] bg-black/50 px-2 py-1.5 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-[#777]">
-                      +{imageFiles.length - 1} more
-                    </figcaption>
-                  ) : null}
-                </figure>
-              ) : (
-                <div className="col-span-2 flex aspect-video flex-col items-center justify-center rounded-sm border border-dashed border-[#181818] bg-[#090909] px-4 text-center text-[11px] text-[#555]">
-                  <LayoutGrid className="mb-2 h-8 w-8 text-[#343434]" />
-                  <span>No images yet.</span>
+            {sourcePreviews.length ? (
+              <div className="max-h-56 overflow-y-auto rounded-sm border border-[#181818] bg-black/40 p-px" aria-label="Selected source images">
+                <div className="grid grid-cols-2 gap-px bg-[#181818]">
+                  {sourcePreviews.map(({ file, url }, index) => (
+                    <figure key={`${index}-${file.name}-${file.size}-${file.lastModified}`} className="min-w-0 bg-[#090909]">
+                      <img
+                        alt={`Source ${index + 1}: ${file.name}`}
+                        className="aspect-video w-full bg-black object-cover"
+                        draggable={false}
+                        src={url}
+                      />
+                      <figcaption className="truncate px-2 py-1.5 font-mono text-[8px] uppercase tracking-[0.12em] text-[#666]">
+                        {String(index + 1).padStart(2, '0')} · {file.name}
+                      </figcaption>
+                    </figure>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="flex aspect-video flex-col items-center justify-center rounded-sm border border-dashed border-[#181818] bg-[#090909] px-4 text-center text-[11px] text-[#555]">
+                <LayoutGrid className="mb-2 h-8 w-8 text-[#343434]" />
+                <span>No source batch yet.</span>
+                <span className="mt-1 font-mono text-[8px] uppercase tracking-[0.18em] text-[#353535]">Select several images at once</span>
+              </div>
+            )}
 
             <Button
               asChild
@@ -207,7 +258,7 @@ export function ImageSplitWorkspace() {
               >
                 <ImageIcon className="h-3.5 w-3.5 shrink-0 text-[#777]" />
                 <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#aaa]">
-                  {imageFiles.length ? 'Replace images' : 'Upload images'}
+                  {imageFiles.length ? 'Replace source batch' : 'Choose multiple images'}
                 </span>
                 <input
                   accept="image/png,image/jpeg,image/webp"
@@ -219,14 +270,27 @@ export function ImageSplitWorkspace() {
                   onChange={(event) => {
                     const list = event.target.files
                     if (!list?.length) {
-                      setImageFiles([])
                       return
                     }
-                    setImageFiles(Array.from(list).filter((f) => f.type.startsWith('image/')))
+                    replaceImageFiles(Array.from(list).filter((f) => f.type.startsWith('image/')))
+                    event.target.value = ''
                   }}
                 />
               </label>
             </Button>
+
+            <div className="flex items-center justify-between gap-3 font-mono text-[8px] uppercase tracking-[0.16em] text-[#414141]">
+              <span>PNG · JPG · WebP · multi-select</span>
+              {imageFiles.length ? (
+                <button
+                  type="button"
+                  onClick={() => replaceImageFiles([])}
+                  className="flex items-center gap-1 text-[#555] transition hover:text-[#aaa]"
+                >
+                  <X className="h-3 w-3" /> Clear
+                </button>
+              ) : null}
+            </div>
 
             <div className="space-y-3 border-t border-white/[0.05] pt-4">
               <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.26em] text-[#343434]">
@@ -332,7 +396,7 @@ export function ImageSplitWorkspace() {
               type="button"
               size="sm"
               className="w-full"
-              disabled={isBusy}
+              disabled={isBusy || !imageFiles.length}
               onClick={() => void handleRun()}
             >
               {isBusy ? (
@@ -363,18 +427,44 @@ export function ImageSplitWorkspace() {
             </div>
           </div>
           {manifest ? (
-            <Button asChild size="sm" variant="secondary">
-              <a
-                aria-label="Download every panel inside a ZIP"
-                download
-                href={imageSplitZipUrl(manifest.batch_id)}
-                rel="noreferrer"
-                className="inline-flex items-center gap-2"
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <span className="mr-1 font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-accent)]">
+                {selectedCount} selected
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setSelectedAssetPaths(
+                    allPanelsSelected ? new Set() : new Set(manifest.panels.map((panel) => panel.asset_path)),
+                  )
+                }}
               >
-                <Download className="h-3.5 w-3.5" />
-                Export all
-              </a>
-            </Button>
+                {allPanelsSelected ? 'Clear' : 'Select all'}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={!selectedCount || isExporting}
+                onClick={() => void handleExportSelected()}
+              >
+                {isExporting ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Images className="h-3.5 w-3.5" />}
+                Download selected
+              </Button>
+              <Button asChild size="sm" variant="secondary">
+                <a
+                  aria-label="Download every panel inside a ZIP"
+                  download
+                  href={imageSplitZipUrl(manifest.batch_id)}
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download all
+                </a>
+              </Button>
+            </div>
           ) : null}
         </div>
 
@@ -384,38 +474,62 @@ export function ImageSplitWorkspace() {
           </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {manifest.panels.map((panel) => (
-              <figure
-                key={`${panel.index}-${panel.asset_path}`}
-                className="space-y-2 rounded-[2px] border border-white/[0.05] bg-white/[0.01] p-3"
-              >
-                <div className="relative overflow-hidden rounded-sm border border-white/[0.04] bg-black">
-                  <img
-                    alt={panel.label}
-                    className="h-auto w-full max-w-full"
-                    src={imageSplitPanelAssetUrl(manifest.batch_id, panel.asset_path)}
-                  />
-                  <Button
-                    asChild
-                    size="sm"
-                    variant="secondary"
-                    className="absolute bottom-3 right-3 h-8 min-h-0 w-8 min-w-0 p-0"
-                  >
-                    <a
-                      aria-label={`Download ${panel.label}`}
-                      download={`${manifest.batch_id}-${panel.asset_path.replace(/\//g, '-')}`}
-                      href={imageSplitPanelAssetUrl(manifest.batch_id, panel.asset_path)}
-                      className="rounded-sm"
+            {manifest.panels.map((panel) => {
+              const selected = selectedAssetPaths.has(panel.asset_path)
+              return (
+                <figure
+                  key={`${panel.index}-${panel.asset_path}`}
+                  className={cn(
+                    'space-y-2 rounded-[2px] border bg-white/[0.01] p-3 transition-colors [contain-intrinsic-size:320px] [content-visibility:auto]',
+                    selected
+                      ? 'border-[color:var(--color-accent-line)] bg-[color:var(--color-accent-soft)]'
+                      : 'border-white/[0.05]',
+                  )}
+                >
+                  <div className="relative overflow-hidden rounded-sm border border-white/[0.04] bg-black">
+                    <img
+                      alt={panel.label}
+                      className="h-auto w-full max-w-full"
+                      loading="lazy"
+                      src={imageSplitPanelAssetUrl(manifest.batch_id, panel.asset_path)}
+                    />
+                    <button
+                      type="button"
+                      aria-label={`${selected ? 'Remove' : 'Select'} ${panel.label} for download`}
+                      aria-pressed={selected}
+                      onClick={() => togglePanel(panel.asset_path)}
+                      className={cn(
+                        'absolute left-3 top-3 grid h-8 w-8 place-items-center border backdrop-blur-sm transition-colors',
+                        selected
+                          ? 'border-[color:var(--color-accent)] bg-[rgba(16,28,15,0.9)] text-[color:var(--color-accent)]'
+                          : 'border-white/15 bg-black/70 text-[#777] hover:border-white/30 hover:text-white',
+                      )}
                     >
-                      <Download className="h-3.5 w-3.5" />
-                    </a>
-                  </Button>
-                </div>
-                <figcaption className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-[#777]">
-                  <span>{panel.label}</span>
-                </figcaption>
-              </figure>
-            ))}
+                      {selected ? <Check className="h-4 w-4" strokeWidth={2} /> : <span className="h-3 w-3 border border-current" />}
+                    </button>
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="secondary"
+                      className="absolute bottom-3 right-3 h-8 min-h-0 w-8 min-w-0 bg-black/75 p-0 backdrop-blur-sm"
+                    >
+                      <a
+                        aria-label={`Download ${panel.label}`}
+                        download={`${manifest.batch_id}-${panel.asset_path.replace(/\//g, '-')}`}
+                        href={imageSplitPanelAssetUrl(manifest.batch_id, panel.asset_path)}
+                        className="rounded-sm"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </a>
+                    </Button>
+                  </div>
+                  <figcaption className="flex items-center justify-between gap-3 font-mono uppercase tracking-[0.18em] text-[#777]">
+                    <span className="min-w-0 truncate text-[9px]">{panel.label}</span>
+                    <span className="shrink-0 text-[8px] text-[#414141]">#{String(panel.index).padStart(3, '0')}</span>
+                  </figcaption>
+                </figure>
+              )
+            })}
           </div>
         )}
       </section>

@@ -59,12 +59,35 @@ def resolve_split_asset(split_id: str, asset_path: str) -> Path:
     return candidate
 
 
-def export_split_zip(workspace: Path) -> bytes:
-    paths = sorted(workspace.rglob("panel-*.png"))
-    if not paths:
-        raise HTTPException(status_code=404, detail="Panels missing for this split.")
-
+def export_split_zip(workspace: Path, asset_paths: list[str] | None = None) -> bytes:
     workspace = workspace.resolve()
+
+    if asset_paths is None:
+        paths = sorted(workspace.rglob("panel-*.png"))
+    else:
+        paths = []
+        seen: set[Path] = set()
+        for asset_path in asset_paths:
+            normalized = Path(asset_path.replace("\\", "/").strip("/"))
+            if normalized.is_absolute() or ".." in normalized.parts:
+                raise HTTPException(status_code=400, detail="Invalid asset path.")
+
+            candidate = (workspace / normalized).resolve()
+            try:
+                candidate.relative_to(workspace)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid asset path.") from None
+
+            if candidate in seen:
+                continue
+            if not candidate.is_file() or candidate.suffix.lower() != ".png" or not candidate.name.startswith("panel-"):
+                raise HTTPException(status_code=404, detail="Selected panel not found.")
+            seen.add(candidate)
+            paths.append(candidate)
+
+    if not paths:
+        detail = "Select at least one panel." if asset_paths is not None else "Panels missing for this split."
+        raise HTTPException(status_code=400 if asset_paths is not None else 404, detail=detail)
 
     archive = io.BytesIO()
     with zipfile.ZipFile(archive, mode="w", compression=zipfile.ZIP_DEFLATED) as bundle:

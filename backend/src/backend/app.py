@@ -384,6 +384,25 @@ def create_app() -> FastAPI:
             headers={"Content-Disposition": f'attachment; filename="{attachment}"'},
         )
 
+    @app.post(
+        "/api/image-split/{split_id}/export-selected.zip",
+        tags=["Image split"],
+        summary="Download selected panels inside a ZIP archive",
+        response_model=None,
+    )
+    def download_selected_split_bundle(
+        split_id: str,
+        asset_paths: list[str] = Body(..., embed=True, min_length=1),
+    ) -> Response:
+        workspace = image_split.workspace_for_export(split_id)
+        blob = image_split.export_split_zip(workspace, asset_paths)
+        attachment = f"splitter-pro-selected-panels-{split_id}.zip"
+        return Response(
+            content=blob,
+            media_type="application/zip",
+            headers={"Content-Disposition": f'attachment; filename="{attachment}"'},
+        )
+
 
     @app.post(
         "/api/reviews",

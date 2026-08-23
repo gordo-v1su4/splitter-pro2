@@ -263,6 +263,19 @@ export function imageSplitZipUrl(splitId: string): string {
   return `/api/image-split/${splitId}/export.zip`
 }
 
+export async function downloadImageSplitSelection(splitId: string, assetPaths: string[]): Promise<Blob> {
+  const response = await fetch(`/api/image-split/${splitId}/export-selected.zip`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ asset_paths: assetPaths }),
+  })
+
+  if (!response.ok) {
+    await parseResponse<never>(response)
+  }
+  return response.blob()
+}
+
 export interface ReviewImageMeta {
   index: number
   label: string
