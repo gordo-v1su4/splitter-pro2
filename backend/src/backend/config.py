@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     media_api_token: str | None = None
     review_storage_bucket: str = "splitter"
     review_storage_prefix: str = "reviews"
+    app_access_pin: str = ""
     allowed_origins: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:5173",

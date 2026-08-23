@@ -1,12 +1,26 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useState } from 'react'
 
 import App from './App'
+import { AccessGate } from './components/access-gate'
+import { ReviewWorkspace } from './components/review-workspace'
 import { UploadPanel } from './components/upload-panel'
 
 const fetchMock = vi.fn()
 const storage = new Map<string, string>()
+
+function ReviewWorkspaceHarness() {
+  const [view, setView] = useState<'projects' | 'reviews'>('reviews')
+  return (
+    <ReviewWorkspace
+      view={view}
+      onOpenProjects={() => setView('projects')}
+      onOpenReviews={() => setView('reviews')}
+    />
+  )
+}
 
 describe('App', () => {
   beforeEach(() => {
@@ -28,8 +42,7 @@ describe('App', () => {
 
   it('uploads a video and renders shot-sequence results', async () => {
     fetchMock
-      .mockResolvedValueOnce(new Response(JSON.stringify({ reviews: [] })))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ projects: [] })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ required: false, unlocked: true })))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -148,6 +161,9 @@ describe('App', () => {
     render(<App />)
 
     const user = userEvent.setup()
+    expect(screen.getByRole('button', { name: /projects temporarily offline/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /reviews temporarily offline/i })).toBeDisabled()
+    expect(screen.getByText(/video frame extraction/i)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /collapse module panel/i }))
     expect(screen.getByRole('button', { name: /expand module panel/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /open navigation drawer/i })).toBeInTheDocument()
@@ -216,6 +232,24 @@ describe('App', () => {
       intervalSeconds: 5,
     }))
     expect(screen.getByText(/12 equal slices/i)).toBeInTheDocument()
+  })
+
+  it('unlocks the private workspace through the server gate', async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ required: true, unlocked: false })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ required: true, unlocked: true })))
+
+    render(<AccessGate />)
+    const user = userEvent.setup()
+    const input = await screen.findByLabelText(/access code/i)
+    await user.type(input, '4821')
+    await user.click(screen.getByRole('button', { name: /unlock workspace/i }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /private access/i })).not.toBeInTheDocument())
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/access-gate', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ pin: '4821' }),
+    }))
   })
 
   it('publishes images into a condensed image review board with history below', async () => {
@@ -459,10 +493,9 @@ describe('App', () => {
         ),
       )
 
-    render(<App />)
+    render(<ReviewWorkspaceHarness />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: /reviews approve/i }))
     expect(screen.getByRole('heading', { name: /^reviews$/i })).toBeInTheDocument()
     expect(screen.getByText(/upload images for approval/i)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /history log/i })).toBeInTheDocument()
@@ -605,10 +638,9 @@ describe('App', () => {
         ),
       )
 
-    render(<App />)
+    render(<ReviewWorkspaceHarness />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: /reviews approve/i }))
     const pendingButtons = await screen.findAllByRole('button', { name: /gen-x vampire 3x3 grids/i })
     await user.click(pendingButtons[0])
 

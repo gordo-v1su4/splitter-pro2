@@ -1,6 +1,7 @@
 import { startTransition, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Film } from 'lucide-react'
 
+import { AccessGate } from './components/access-gate'
 import { ImageSplitWorkspace } from './components/image-split-workspace'
 import { JobStatusPanel } from './components/job-status-panel'
 import { ReviewWorkspace } from './components/review-workspace'
@@ -21,7 +22,7 @@ import { formatDuration } from './lib/utils'
 type WorkspaceTab = 'projects' | 'reviews' | 'video' | 'image'
 
 function App() {
-  const [workspace, setWorkspace] = useState<WorkspaceTab>('projects')
+  const [workspace, setWorkspace] = useState<WorkspaceTab>('video')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     if (typeof window === 'undefined') return false
     if (window.innerWidth < 768) return true
@@ -153,6 +154,7 @@ function App() {
 
   return (
     <main className="relative h-screen overflow-hidden bg-[#070707] text-[#c0c0c0]" style={{ fontFamily: "'Inter','SF Pro Display',system-ui,sans-serif" }}>
+      <AccessGate />
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[360px] opacity-50"
         style={{
@@ -246,9 +248,9 @@ function StudioSidebar({
   onToggleCollapsed: () => void
   onSelectTab: (tab: WorkspaceTab) => void
 }) {
-  const modules: Array<{ tab: WorkspaceTab; label: string; sub: string }> = [
-    { tab: 'projects', label: 'Projects', sub: 'overview · workspace' },
-    { tab: 'reviews', label: 'Reviews', sub: 'approve · publish' },
+  const modules: Array<{ tab: WorkspaceTab; label: string; sub: string; disabled?: boolean }> = [
+    { tab: 'projects', label: 'Projects', sub: 'temporarily offline', disabled: true },
+    { tab: 'reviews', label: 'Reviews', sub: 'temporarily offline', disabled: true },
     { tab: 'video', label: 'Video process', sub: 'detect · frames · sheet' },
     { tab: 'image', label: 'Split grids', sub: 'image grids · crops' },
   ]
@@ -277,11 +279,12 @@ function StudioSidebar({
               key={module.tab}
               type="button"
               onClick={() => onSelectTab(module.tab)}
+              disabled={module.disabled}
               title={`${module.label} · ${module.sub}`}
               aria-label={`${module.label} · ${module.sub}`}
-              className={`flex h-6 w-6 items-center justify-center rounded-[2px] border transition-colors ${activeTab === module.tab ? 'border-[color:var(--color-accent)]' : 'border-transparent hover:border-[#333]'}`}
+              className={`flex h-6 w-6 items-center justify-center rounded-[2px] border transition-colors ${module.disabled ? 'cursor-not-allowed border-red-500/20 bg-red-500/[0.04]' : activeTab === module.tab ? 'border-[color:var(--color-accent)]' : 'border-transparent hover:border-[#333]'}`}
             >
-              <span className={`h-1.5 w-1.5 rounded-full ${activeTab === module.tab ? 'bg-[color:var(--color-accent)]' : 'bg-[#2a2a2a]'}`} />
+              <span className={`h-1.5 w-1.5 rounded-full ${module.disabled ? 'bg-red-500/60' : activeTab === module.tab ? 'bg-[color:var(--color-accent)]' : 'bg-[#2a2a2a]'}`} />
             </button>
           ))}
         </div>
@@ -335,13 +338,16 @@ function StudioSidebar({
               key={module.tab}
               type="button"
               onClick={() => onSelectTab(module.tab)}
-              className={`flex w-full items-center text-left transition-colors ${isActive ? 'bg-[#131313] text-[#e0e0e0]' : 'text-[#585858] hover:bg-[#101010] hover:text-[#9a9a9a]'}`}
+              disabled={module.disabled}
+              aria-disabled={module.disabled}
+              className={`flex w-full items-center text-left transition-colors ${module.disabled ? 'cursor-not-allowed bg-red-500/[0.025] text-red-400/55' : isActive ? 'bg-[#131313] text-[#e0e0e0]' : 'text-[#585858] hover:bg-[#101010] hover:text-[#9a9a9a]'}`}
             >
-              <div className="mr-3 w-[2px] self-stretch" style={{ background: isActive ? '#3a8a3a' : 'transparent', minHeight: 38 }} />
-              <div className="py-[7px]">
+              <div className="mr-3 w-[2px] self-stretch" style={{ background: module.disabled ? 'rgba(248,113,113,.45)' : isActive ? '#3a8a3a' : 'transparent', minHeight: 38 }} />
+              <div className="min-w-0 flex-1 py-[7px]">
                 <div className="text-[12px] font-medium leading-tight">{module.label}</div>
-                <div className="text-[10px] text-[#3a3a3a]">{module.sub}</div>
+                <div className={`text-[10px] ${module.disabled ? 'text-red-400/35' : 'text-[#3a3a3a]'}`}>{module.sub}</div>
               </div>
+              {module.disabled ? <span className="mr-3 border border-red-500/20 px-1.5 py-0.5 font-mono text-[7px] uppercase tracking-[0.14em] text-red-400/45">Paused</span> : null}
             </button>
           )
         })}

@@ -90,6 +90,15 @@ class ErrorResponse(BaseModel):
     detail: str = Field(..., examples=["Job is still processing."])
 
 
+class AccessPinRequest(BaseModel):
+    pin: str = Field(..., min_length=1, max_length=128)
+
+
+class AccessGateStatus(BaseModel):
+    required: bool
+    unlocked: bool
+
+
 class ImageSplitPanel(BaseModel):
     index: int
     label: str

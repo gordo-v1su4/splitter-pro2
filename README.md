@@ -68,6 +68,16 @@ bun run dev
 
 The Vite dev server proxies `/api/*` calls to `http://127.0.0.1:8000`.
 
+## Private access gate
+
+Set `SPLITTER_APP_ACCESS_PIN` only in the untracked server `.env` to require a code before the workspace can be used. The PIN remains server-side; a successful attempt issues a 30-day HttpOnly, SameSite=Strict cookie. Protected API and documentation routes reject requests without that cookie, and repeated failed attempts are temporarily throttled. Empty or missing configuration leaves the deployment open.
+
+When using Docker Compose, map the server value into the service environment:
+
+```yaml
+SPLITTER_APP_ACCESS_PIN: ${SPLITTER_APP_ACCESS_PIN:-}
+```
+
 ## Tests
 
 ```powershell
@@ -82,5 +92,5 @@ bun run test
 
 ```powershell
 docker build -t splitter-pro2 .
-docker run --rm -p 8000:8000 splitter-pro2
+docker run --rm -p 8000:8000 -e SPLITTER_APP_ACCESS_PIN splitter-pro2
 ```

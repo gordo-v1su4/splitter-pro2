@@ -3,14 +3,28 @@ from __future__ import annotations
 import hashlib
 import shutil
 
-from fastapi import BackgroundTasks, Body, FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import BackgroundTasks, Body, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
 from . import image_split, projects, reviews
+from .access_gate import (
+    ACCESS_COOKIE_NAME,
+    ACCESS_SESSION_TTL_SECONDS,
+    AccessGateConfig,
+    clear_attempts,
+    is_access_gate_enabled,
+    is_attempt_limited,
+    is_correct_pin,
+    is_valid_session_token,
+    mint_session_token,
+    register_failed_attempt,
+)
 from .config import get_settings
 from .docs_theme import SWAGGER_UI_DARK_ROUTE, SWAGGER_UI_DARK_STYLESHEET_PATH, swagger_ui_dark_html
 from .models import (
+    AccessGateStatus,
+    AccessPinRequest,
     ErrorResponse,
     ImageSplitBatchResponse,
     ImageSplitResponse,
@@ -43,6 +57,7 @@ OPENAPI_TAGS = [
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    access_gate_config = AccessGateConfig(pin=settings.app_access_pin.strip())
     app = FastAPI(
         title=settings.app_name,
         description=(
@@ -63,6 +78,26 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    @app.middleware("http")
+    async def enforce_access_gate(request: Request, call_next):
+        if not is_access_gate_enabled(access_gate_config):
+            return await call_next(request)
+
+        path = request.url.path
+        public_paths = {"/api/access-gate", "/api/health"}
+        protected = (
+            (path.startswith("/api/") and path not in public_paths)
+            or path in {"/docs", "/redoc", "/openapi.json", SWAGGER_UI_DARK_ROUTE}
+        )
+        token = request.cookies.get(ACCESS_COOKIE_NAME)
+        if protected and not is_valid_session_token(token, access_gate_config):
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Enter the access code to use this deployment.", "code": "access_locked"},
+                headers={"Cache-Control": "no-store"},
+            )
+        return await call_next(request)
+
     @app.get(SWAGGER_UI_DARK_ROUTE, include_in_schema=False)
     def swagger_ui_dark_css() -> FileResponse:
         return FileResponse(
@@ -78,6 +113,49 @@ def create_app() -> FastAPI:
     @app.get("/api/health", tags=["Health"])
     def healthcheck() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/api/access-gate", response_model=AccessGateStatus, tags=["Access"])
+    def get_access_gate_status(request: Request) -> AccessGateStatus:
+        required = is_access_gate_enabled(access_gate_config)
+        unlocked = not required or is_valid_session_token(
+            request.cookies.get(ACCESS_COOKIE_NAME),
+            access_gate_config,
+        )
+        return AccessGateStatus(required=required, unlocked=unlocked)
+
+    @app.post("/api/access-gate", response_model=AccessGateStatus, tags=["Access"])
+    def unlock_access_gate(request: Request, payload: AccessPinRequest) -> JSONResponse:
+        if not is_access_gate_enabled(access_gate_config):
+            return JSONResponse({"required": False, "unlocked": True})
+
+        forwarded_for = request.headers.get("x-forwarded-for", "")
+        client_key = forwarded_for.split(",", 1)[0].strip() or (request.client.host if request.client else "unknown")
+        if is_attempt_limited(client_key):
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Too many attempts. Wait a few minutes.", "code": "too_many_attempts"},
+            )
+        if not is_correct_pin(payload.pin, access_gate_config):
+            register_failed_attempt(client_key)
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Incorrect code.", "code": "invalid_pin"},
+            )
+
+        clear_attempts(client_key)
+        response = JSONResponse({"required": True, "unlocked": True})
+        forwarded_proto = request.headers.get("x-forwarded-proto", request.url.scheme).split(",", 1)[0].strip()
+        response.set_cookie(
+            key=ACCESS_COOKIE_NAME,
+            value=mint_session_token(access_gate_config),
+            max_age=ACCESS_SESSION_TTL_SECONDS,
+            httponly=True,
+            secure=forwarded_proto == "https",
+            samesite="strict",
+            path="/",
+        )
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.post(
         "/api/jobs",
