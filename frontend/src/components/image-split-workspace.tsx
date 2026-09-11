@@ -1,5 +1,5 @@
 import { Check, Download, ImageIcon, Images, LayoutGrid, LoaderCircle, X } from 'lucide-react'
-import { startTransition, useEffect, useId, useState } from 'react'
+import { startTransition, useEffect, useId, useRef, useState } from 'react'
 
 import {
   downloadImageSplitSelection,
@@ -63,6 +63,8 @@ function formatSplitError(cause: unknown): string {
 
 export function ImageSplitWorkspace() {
   const uploadId = useId()
+  const dragDepth = useRef(0)
+  const [isDragging, setIsDragging] = useState(false)
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [sourcePreviews, setSourcePreviews] = useState<Array<{ file: File; url: string }>>([])
 
@@ -119,6 +121,7 @@ export function ImageSplitWorkspace() {
   const allPanelsSelected = Boolean(manifest?.panels.length) && selectedCount === manifest?.panels.length
 
   function replaceImageFiles(files: File[]) {
+    if (isBusy) return
     setImageFiles(files.slice(0, 32))
     setManifest(null)
     setSelectedAssetPaths(new Set())
@@ -156,15 +159,22 @@ export function ImageSplitWorkspace() {
     }
   }
 
-  function handleDrop(event: React.DragEvent<HTMLLabelElement>) {
+  function handleDrop(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault()
+    dragDepth.current = 0
+    setIsDragging(false)
+    if (isBusy) return
     const incoming = event.dataTransfer.files
     if (!incoming?.length) {
       return
     }
-    const images = Array.from(incoming).filter((f) => f.type.startsWith('image/'))
+    const images = Array.from(incoming).filter((f) =>
+      /^image\/(png|jpeg|webp)$/i.test(f.type) || (!f.type && /\.(png|jpe?g|webp)$/i.test(f.name)),
+    )
     if (images.length) {
       replaceImageFiles(images)
+    } else {
+      setError('Drop PNG, JPG, or WebP images to continue.')
     }
   }
 
@@ -209,7 +219,36 @@ export function ImageSplitWorkspace() {
   return (
     <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
       <aside className="space-y-4 lg:sticky lg:top-8 lg:self-start">
-        <Card>
+        <Card
+          aria-label="Image source drop zone"
+          data-dragging={isDragging}
+          onDragEnter={(event) => {
+            if (!Array.from(event.dataTransfer.types).includes('Files')) return
+            event.preventDefault()
+            dragDepth.current += 1
+            if (!isBusy) setIsDragging(true)
+          }}
+          onDragOver={(event) => {
+            if (!Array.from(event.dataTransfer.types).includes('Files')) return
+            event.preventDefault()
+            if (!isBusy) setIsDragging(true)
+            event.dataTransfer.dropEffect = isBusy ? 'none' : 'copy'
+          }}
+          onDragLeave={() => {
+            dragDepth.current = Math.max(0, dragDepth.current - 1)
+            if (!dragDepth.current) setIsDragging(false)
+          }}
+          onDrop={handleDrop}
+          className={cn('transition-colors', isDragging && 'border-[color:var(--color-accent)] ring-2 ring-[color:var(--color-accent)]')}
+        >
+          {isDragging ? (
+            <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-sm border-2 border-dashed border-[color:var(--color-accent)] bg-[#10180f]/95 text-center">
+              <Images className="h-10 w-10 text-[color:var(--color-accent)]" />
+              <p className="text-lg font-medium text-[#e0e0e0]">Drop images here</p>
+              <p className="text-xs text-[#aaa]">{imageFiles.length ? 'Release to replace the source batch' : 'Release to add your source batch'}</p>
+              <p className="font-mono text-[10px] text-[#aaa]">PNG · JPG · WebP · up to 32 images</p>
+            </div>
+          ) : null}
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-[0.28em] text-[#555]">
               <span>Source batch</span>
@@ -239,8 +278,8 @@ export function ImageSplitWorkspace() {
             ) : (
               <div className="flex aspect-video flex-col items-center justify-center rounded-sm border border-dashed border-[#181818] bg-[#090909] px-4 text-center text-[11px] text-[#555]">
                 <LayoutGrid className="mb-2 h-8 w-8 text-[#343434]" />
-                <span>No source batch yet.</span>
-                <span className="mt-1 font-mono text-[8px] uppercase tracking-[0.18em] text-[#353535]">Select several images at once</span>
+                <span className="text-[#bbb]">Drag and drop images anywhere in this box</span>
+                <span className="mt-1 font-mono text-[8px] uppercase tracking-[0.18em] text-[#555]">Up to 32 images · or browse below</span>
               </div>
             )}
 
@@ -252,13 +291,11 @@ export function ImageSplitWorkspace() {
             >
               <label
                 htmlFor={uploadId}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={handleDrop}
                 className="flex cursor-pointer items-center gap-2"
               >
                 <ImageIcon className="h-3.5 w-3.5 shrink-0 text-[#777]" />
                 <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#aaa]">
-                  {imageFiles.length ? 'Replace source batch' : 'Choose multiple images'}
+                  {imageFiles.length ? 'Drop to replace · or browse' : 'Choose multiple images'}
                 </span>
                 <input
                   accept="image/png,image/jpeg,image/webp"
@@ -266,6 +303,7 @@ export function ImageSplitWorkspace() {
                   className="sr-only"
                   id={uploadId}
                   multiple
+                  disabled={isBusy}
                   type="file"
                   onChange={(event) => {
                     const list = event.target.files
@@ -278,6 +316,7 @@ export function ImageSplitWorkspace() {
                 />
               </label>
             </Button>
+            <p role="status" className="sr-only">{isDragging ? 'Drop images to replace the source batch' : ''}</p>
 
             <div className="flex items-center justify-between gap-3 font-mono text-[8px] uppercase tracking-[0.16em] text-[#414141]">
               <span>PNG · JPG · WebP · multi-select</span>
@@ -285,6 +324,7 @@ export function ImageSplitWorkspace() {
                 <button
                   type="button"
                   onClick={() => replaceImageFiles([])}
+                  disabled={isBusy}
                   className="flex items-center gap-1 text-[#555] transition hover:text-[#aaa]"
                 >
                   <X className="h-3 w-3" /> Clear

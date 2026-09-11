@@ -24,6 +24,30 @@ function ReviewWorkspaceHarness() {
 }
 
 describe('App', () => {
+  it('accepts image batches dropped on the source preview and preserves them after an invalid drop', async () => {
+    render(<ImageSplitWorkspace />)
+    const zone = screen.getByLabelText('Image source drop zone')
+    const files = [new File(['a'], 'first.png', { type: 'image/png' }), new File(['b'], 'second.JPG')]
+    fireEvent.dragEnter(zone, { dataTransfer: { types: ['Files'] } })
+    expect(screen.getByRole('status')).toHaveTextContent('Drop images')
+    expect(screen.getByText('Drop images here')).toBeVisible()
+    expect(zone).toContainElement(screen.getByText('Split mode'))
+    fireEvent.dragEnter(screen.getByText('Split mode'), { dataTransfer: { types: ['Files'] } })
+    fireEvent.dragLeave(screen.getByText('Split mode'))
+    expect(screen.getByText('Drop images here')).toBeVisible()
+    fireEvent.dragLeave(zone)
+    expect(screen.queryByText('Drop images here')).not.toBeInTheDocument()
+    fireEvent.dragOver(zone, { dataTransfer: { types: ['Files'] } })
+    expect(screen.getByText('Drop images here')).toBeVisible()
+    fireEvent.drop(zone, { dataTransfer: { files } })
+    expect(await screen.findByText('2 queued')).toBeInTheDocument()
+    expect(screen.getByAltText('Source 2: second.JPG')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    fireEvent.drop(zone, { dataTransfer: { files: [new File(['text'], 'notes.txt', { type: 'text/plain' })] } })
+    expect(screen.getByText('Drop PNG, JPG, or WebP images to continue.')).toBeInTheDocument()
+    expect(screen.getByText('2 queued')).toBeInTheDocument()
+  })
+
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock)
     storage.clear()
