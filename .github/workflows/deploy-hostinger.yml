@@ -8,8 +8,8 @@
 #   HOSTINGER_APP_PATH (optional, default /root/splitter-pro2)
 #
 # One-time on the VPS only: clone this repo to APP_PATH and add a root .env (see .gitignore).
-# Traefik runs separately (e.g. Hostinger Docker project); use host network + Docker labels on
-# this compose. Traefik command should include: --providers.docker.useBindPortIP=true
+# Public HTTPS is Hostinger Caddy at /docker/caddy-hostinger. It reverse-proxies
+# splitter.serving.cloud to this container on the splitter-pro2_default network.
 name: Deploy to Hostinger
 
 on:
@@ -23,16 +23,19 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          HOSTINGER_APP_PATH: ${{ secrets.HOSTINGER_APP_PATH }}
         with:
           host: ${{ secrets.HOSTINGER_HOST }}
           username: ${{ secrets.HOSTINGER_USER }}
           key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          envs: HOSTINGER_APP_PATH
           script_stop: true
           timeout: 60s
           command_timeout: 20m
           script: |
             set -e
-            APP_PATH="${{ secrets.HOSTINGER_APP_PATH }}"
+            APP_PATH="${HOSTINGER_APP_PATH:-}"
             [ -z "$APP_PATH" ] && APP_PATH="/root/splitter-pro2"
             if [ ! -d "$APP_PATH" ]; then
               echo "App path $APP_PATH not found. One-time: clone this repo to that path on the VPS."

@@ -1,11 +1,13 @@
-# Traefik (separate stack, often network_mode: host) discovers this service via Docker labels.
-# Published port 8000 → Traefik must use: --providers.docker.useBindPortIP=true
-# Override host rule: set PUBLIC_HOST_RULE in .env next to this file (Compose variable substitution).
-# Default exposes only splitter.serving.cloud. Do not route apex serving.cloud or www.serving.cloud to this app.
+# Hostinger Caddy (container caddy-hostinger, stack /docker/caddy-hostinger) is the
+# public HTTPS proxy. It joins this project's default network and routes only
+# splitter.serving.cloud to splitter-pro2-splitter-pro2-1:8000.
+# Do not rename the Compose project or service; the Caddyfile uses that container name.
+# Do not route apex serving.cloud or www.serving.cloud to this app.
 
 services:
   splitter-pro2:
     build: .
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
@@ -23,12 +25,6 @@ services:
       SPLITTER_S3_REGION: ${SPLITTER_S3_REGION:-${S3_REGION:-${RUSTFS_REGION:-us-east-1}}}
     volumes:
       - splitter_data:/app/data
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.splitter-pro2.rule=${PUBLIC_HOST_RULE:-Host(`splitter.serving.cloud`)}"
-      - "traefik.http.routers.splitter-pro2.entrypoints=websecure"
-      - "traefik.http.routers.splitter-pro2.tls.certresolver=letsencrypt"
-      - "traefik.http.services.splitter-pro2.loadbalancer.server.port=8000"
 
 volumes:
   splitter_data:

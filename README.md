@@ -139,3 +139,5 @@ bun run test
 docker build -t splitter-pro2 .
 docker run --rm -p 8000:8000 -e SPLITTER_APP_ACCESS_PIN splitter-pro2
 ```
+
+Production at `https://splitter.serving.cloud` is this Compose project on the Hostinger VPS. Hostinger Caddy, not Traefik, terminates HTTPS and reverse-proxies that hostname to `splitter-pro2-splitter-pro2-1:8000`. The live route is in `/docker/caddy-hostinger/Caddyfile`. Pushes to `main` deploy it through `.github/workflows/deploy-hostinger.yml`.
