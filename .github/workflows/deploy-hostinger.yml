@@ -54,10 +54,6 @@ jobs:
               exit 1
             fi
 
-            echo "===== yt-dlp probe ====="
-            docker compose exec -T splitter-pro2 uv run python -m yt_dlp --ignore-config --no-cache-dir --no-playlist --no-colors --socket-timeout 20 --retries 0 --extractor-retries 0 --js-runtimes deno --skip-download -- "https://www.youtube.com/watch?v=M8MjhufuEJ8" || true
-            echo "===== end probe ====="
-
             docker compose down --remove-orphans
             docker compose up -d --build
             docker compose ps
