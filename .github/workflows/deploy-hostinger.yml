@@ -28,6 +28,8 @@ jobs:
           username: ${{ secrets.HOSTINGER_USER }}
           key: ${{ secrets.HOSTINGER_SSH_KEY }}
           script_stop: true
+          timeout: 60s
+          command_timeout: 20m
           script: |
             set -e
             APP_PATH="${{ secrets.HOSTINGER_APP_PATH }}"
@@ -40,6 +42,11 @@ jobs:
             cd "$APP_PATH"
             git fetch origin main
             git checkout main
+            if ! git diff --quiet -- docker-compose.yml; then
+              echo "===== server docker-compose.yml diff discarded so main can fast-forward ====="
+              git diff -- docker-compose.yml
+              git checkout -- docker-compose.yml
+            fi
             git pull --ff-only origin main
 
             if [ ! -f .env ]; then
