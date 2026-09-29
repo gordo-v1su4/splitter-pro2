@@ -6,8 +6,11 @@ import { Card, CardContent } from './ui/card'
 import { Progress } from './ui/progress'
 
 function toPercentage(job: JobState | null) {
+  if (job?.source_ready === false) {
+    return job.download_total_bytes ? Math.min(100, Math.round((job.downloaded_bytes ?? 0) / job.download_total_bytes * 100)) : null
+  }
   if (!job || !job.progress_total) {
-    return job?.status === 'completed' ? 100 : 8
+    return job?.status === 'completed' ? 100 : null
   }
   return Math.round((job.progress_completed / job.progress_total) * 100)
 }
@@ -26,7 +29,7 @@ const toneStyles: Record<Tone, { dot: string; text: string; headline: string; su
     dot: 'bg-zinc-600',
     text: 'text-[#555]',
     headline: 'Awaiting',
-    sub: 'Drop a video to start the pipeline.',
+    sub: 'Choose a video file or YouTube link.',
   },
   working: {
     dot: 'bg-zinc-500/80 dot-pulse',
@@ -61,6 +64,16 @@ export function JobStatusPanel({
   const tone = resolveTone(job)
   const visibleError = job?.status === 'failed' ? job.error ?? error : error
   const styles = toneStyles[tone]
+  const downloading = job?.source_ready === false
+  const stageLabels: Record<string, string> = {
+    'download-queued': 'Waiting to download',
+    'downloading-video': 'Downloading from YouTube',
+    'preparing-video': 'Preparing downloaded video',
+    'download-failed': 'Download stopped',
+    'detecting-scenes': 'Detecting scene cuts',
+    'building-intervals': 'Planning video slices',
+    'extracting-segments': 'Extracting clips and keyframes',
+  }
 
   const progressTotal = job?.progress_total ?? 0
   const progressDone = job?.progress_completed ?? 0
@@ -76,7 +89,7 @@ export function JobStatusPanel({
             <span>Pipeline</span>
           </div>
           <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.24em]">
-            <span className={`h-1.5 w-1.5 rounded-[2px] ${styles.dot}`} />
+            <span className={`h-1.5 w-1.5 rounded-xs ${styles.dot}`} />
             <span className={styles.text}>{job?.status ?? 'idle'}</span>
           </span>
         </div>
@@ -84,7 +97,7 @@ export function JobStatusPanel({
         <div className="flex items-end justify-between gap-4">
           <div className="space-y-1">
             <p className="font-mono text-[12px] font-medium leading-none tracking-tight text-[#777]">
-              {styles.headline}
+              {job ? stageLabels[job.stage] ?? styles.headline : styles.headline}
             </p>
             <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#555]">
               {styles.sub}
@@ -92,25 +105,26 @@ export function JobStatusPanel({
           </div>
           <div className="text-right leading-none">
             <p className="font-mono text-[16px] font-semibold font-medium tracking-tight text-[#555]/90 tabular-nums">
-              {percentage}
-              <span className="ml-0.5 text-[12px] text-[#343434]">%</span>
+              {percentage == null ? '—' : `${percentage}%`}
             </p>
           </div>
         </div>
 
         <Progress
-          value={percentage}
-          indicatorClassName={tone === 'completed' ? 'bg-[color:var(--color-accent)]' : undefined}
+          value={percentage ?? 0}
+          indicatorClassName={tone === 'completed' ? 'bg-(--color-accent)' : undefined}
         />
 
         {job ? (
           <div className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-[10px] uppercase tracking-[0.22em] text-[#555]">
-            <span>
+            {downloading ? <span className="text-zinc-300">
+              {((job.downloaded_bytes ?? 0) / 1024 / 1024).toFixed(1)} MB downloaded
+            </span> : <span>
               <span className="text-[#aaa]">{progressDone}</span>
               <span className="mx-1 text-[#222]">/</span>
               <span>{progressTotal || '—'}</span>
               <span className="ml-2 text-[#343434]">extracted</span>
-            </span>
+            </span>}
             <span>
               stage <span className="ml-2 text-[#aaa]">{job.stage}</span>
             </span>
@@ -145,11 +159,11 @@ export function JobStatusPanel({
                     'h-1.5 transition-colors duration-300',
                     filled || tone === 'completed'
                       ? tone === 'completed'
-                        ? 'bg-[color:var(--color-accent)]'
+                        ? 'bg-(--color-accent)'
                         : 'bg-zinc-500/50'
                       : dimmed
-                        ? 'bg-white/[0.06]'
-                        : 'bg-white/[0.06]',
+                        ? 'bg-white/6'
+                        : 'bg-white/6',
                   ].join(' ')}
                 />
               )
@@ -179,7 +193,7 @@ export function JobStatusPanel({
                 : job
                   ? job.duration_seconds
                     ? `${formatDuration(job.duration_seconds)} · scanning`
-                    : 'inspecting source'
+                    : downloading ? 'waiting for download' : 'inspecting source'
                   : 'idle'}
             </p>
           </div>

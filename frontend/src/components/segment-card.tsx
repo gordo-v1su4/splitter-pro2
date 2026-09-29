@@ -39,8 +39,8 @@ export function SegmentCard({
       className={cn(
         'group flex flex-col border bg-[#080808] transition-[border-color,box-shadow] duration-200',
         selected
-          ? 'border-[color:var(--color-accent-line)] shadow-[inset_0_0_0_1px_rgba(115,173,104,0.12)]'
-          : 'border-white/[0.04] hover:border-[#242424]',
+          ? 'border-accent-line shadow-[inset_0_0_0_1px_rgba(115,173,104,0.12)]'
+          : 'border-white/4 hover:border-[#242424]',
       )}
     >
       <div className="relative">
@@ -97,7 +97,7 @@ export function SegmentCard({
           </button>
         </div>
 
-        <span className={cn('absolute left-2 top-2 z-10 font-mono text-[8px] tracking-[0.16em] drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]', selected ? 'text-[color:var(--color-accent)]' : 'text-white/45')}>
+        <span className={cn('absolute left-2 top-2 z-10 font-mono text-[8px] tracking-[0.16em] drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]', selected ? 'text-(--color-accent)' : 'text-white/45')}>
           {String(segment.index).padStart(3, '0')}
         </span>
       </div>
@@ -115,7 +115,7 @@ export function SegmentCard({
             className={cn(
               'grid h-3.5 w-3.5 place-items-center border transition-colors',
               selected
-                ? 'border-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent)]'
+                ? 'border-(--color-accent) bg-accent-soft text-(--color-accent)'
                 : 'border-[#3a3a3a] text-transparent group-hover/selection:border-[#777]',
             )}
           >

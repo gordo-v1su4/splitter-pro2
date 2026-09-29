@@ -33,6 +33,7 @@ from .models import (
     JobState,
     JobStatus,
     VideoSplitMode,
+    YouTubeJobRequest,
     ProjectListResponse,
     ProjectRefinementRequest,
     ProjectResponse,
@@ -43,6 +44,7 @@ from .models import (
 )
 from .processing import build_custom_contact_sheet, build_segment_keyframe, process_job
 from .storage import create_job, load_manifest, read_state, resolve_asset
+from .youtube import create_youtube_job, download_and_process
 
 
 OPENAPI_TAGS = [
@@ -184,6 +186,14 @@ def create_app() -> FastAPI:
         await file.close()
         background_tasks.add_task(process_job, paths.job_id)
         return JobCreatedResponse(job=read_state(paths.job_id))
+
+    @app.post("/api/jobs/youtube", response_model=JobCreatedResponse, status_code=202, tags=["Video jobs"])
+    async def create_youtube_job_endpoint(
+        payload: YouTubeJobRequest, background_tasks: BackgroundTasks,
+    ) -> JobCreatedResponse:
+        job = create_youtube_job(payload)
+        background_tasks.add_task(download_and_process, job.job_id, payload.use_cookies)
+        return JobCreatedResponse(job=job)
 
     @app.get(
         "/api/jobs/{job_id}",

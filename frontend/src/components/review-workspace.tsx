@@ -301,7 +301,7 @@ export function ReviewWorkspace({
             <input
               value={title}
               onChange={(event) => setTitle(event.currentTarget.value)}
-              className="w-full rounded-sm border border-[#181818] bg-[#080808] px-3 py-2 text-[12px] text-[#d4d4d4] outline-none focus:border-[color:var(--color-accent-line)]"
+              className="w-full rounded-sm border border-[#181818] bg-[#080808] px-3 py-2 text-[12px] text-[#d4d4d4] outline-none focus:border-accent-line"
               placeholder="Act 1 image good, hero options…"
             />
           </label>
@@ -311,7 +311,7 @@ export function ReviewWorkspace({
             <input
               value={notes}
               onChange={(event) => setNotes(event.currentTarget.value)}
-              className="w-full rounded-sm border border-[#181818] bg-[#080808] px-3 py-2 text-[12px] text-[#d4d4d4] outline-none focus:border-[color:var(--color-accent-line)]"
+              className="w-full rounded-sm border border-[#181818] bg-[#080808] px-3 py-2 text-[12px] text-[#d4d4d4] outline-none focus:border-accent-line"
               placeholder="Why these are good, what to compare, what changed…"
             />
           </label>
@@ -382,9 +382,9 @@ function SectionTabs({
         type="button"
         onClick={onOpenProjects}
         aria-pressed={active === 'projects'}
-        className={`rounded-[2px] border px-2 py-1 font-mono text-[8px] uppercase tracking-[0.16em] transition-colors ${
+        className={`rounded-xs border px-2 py-1 font-mono text-[8px] uppercase tracking-[0.16em] transition-colors ${
           active === 'projects'
-            ? 'border-[color:var(--color-accent-line)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent)]'
+            ? 'border-accent-line bg-accent-soft text-(--color-accent)'
             : 'border-[#242424] text-[#666] hover:border-[#444] hover:text-[#aaa]'
         }`}
       >
@@ -394,9 +394,9 @@ function SectionTabs({
         type="button"
         onClick={onOpenReviews}
         aria-pressed={active === 'reviews'}
-        className={`rounded-[2px] border px-2 py-1 font-mono text-[8px] uppercase tracking-[0.16em] transition-colors ${
+        className={`rounded-xs border px-2 py-1 font-mono text-[8px] uppercase tracking-[0.16em] transition-colors ${
           active === 'reviews'
-            ? 'border-[color:var(--color-accent-line)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent)]'
+            ? 'border-accent-line bg-accent-soft text-(--color-accent)'
             : 'border-[#242424] text-[#666] hover:border-[#444] hover:text-[#aaa]'
         }`}
       >
@@ -554,7 +554,7 @@ function ReviewGallery({
       </div>
 
       {pendingImages.length === 0 ? (
-        <div className="rounded-[2px] border border-emerald-400/20 bg-emerald-400/[0.06] p-4 text-[12px] text-emerald-100/90">
+        <div className="rounded-xs border border-emerald-400/20 bg-emerald-400/[0.06] p-4 text-[12px] text-emerald-100/90">
           This review has no pending images left. It has moved down into the compact history log.
         </div>
       ) : (
@@ -565,7 +565,7 @@ function ReviewGallery({
             return (
               <figure
                 key={image.asset_path}
-                className="group overflow-hidden rounded-[2px] border border-[#181818] bg-zinc-950 shadow-[0_18px_60px_rgba(0,0,0,0.24)]"
+                className="group overflow-hidden rounded-xs border border-[#181818] bg-zinc-950 shadow-[0_18px_60px_rgba(0,0,0,0.24)]"
               >
                 <button
                   type="button"
@@ -582,7 +582,7 @@ function ReviewGallery({
                     <div className="w-full p-3">
                       <div className="flex items-center justify-between gap-3 text-[10px] text-[#d4d4d4]">
                         <span className="truncate font-medium">{image.label}</span>
-                        <span className="rounded-[2px] border border-white/15 bg-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-[#c0c0c0]">
+                        <span className="rounded-xs border border-white/15 bg-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-[#c0c0c0]">
                           {status}
                         </span>
                       </div>
@@ -614,7 +614,7 @@ function ReviewGallery({
             }
           }}
         >
-          <div className="w-full max-w-7xl overflow-hidden rounded-[2px] border border-[#181818] bg-zinc-950/95 shadow-2xl">
+          <div className="w-full max-w-7xl overflow-hidden rounded-xs border border-[#181818] bg-zinc-950/95 shadow-2xl">
             <div className="flex flex-col gap-3 border-b border-[#181818] p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.22em] text-[#555]">Image inspection</p>
@@ -623,13 +623,13 @@ function ReviewGallery({
               <button
                 type="button"
                 onClick={closeImage}
-                className="rounded-[2px] border border-[#181818] bg-white/[0.04] px-2 py-1 font-mono text-[8px] uppercase tracking-[0.16em] text-[#c0c0c0] transition hover:bg-white/[0.08]"
+                className="rounded-xs border border-[#181818] bg-white/[0.04] px-2 py-1 font-mono text-[8px] uppercase tracking-[0.16em] text-[#c0c0c0] transition hover:bg-white/[0.08]"
               >
                 Close
               </button>
             </div>
             <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-              <div className="relative flex max-h-[82vh] min-h-[42vh] items-center justify-center overflow-auto rounded-[2px] bg-black/60 p-2">
+              <div className="relative flex max-h-[82vh] min-h-[42vh] items-center justify-center overflow-auto rounded-xs bg-black/60 p-2">
                 <img
                   src={selectedImageUrl}
                   alt={`${selectedImage.label} large preview`}
@@ -637,12 +637,12 @@ function ReviewGallery({
                   style={zoomScale > 1 ? { width: `${selectedImage.width * zoomScale}px` } : undefined}
                   className={zoomScale > 1 ? 'h-auto max-w-none cursor-zoom-out object-contain' : 'max-h-[78vh] w-auto max-w-full cursor-zoom-in object-contain'}
                 />
-                <div className="absolute bottom-3 right-3 flex flex-wrap justify-end gap-2 rounded-[2px] border border-[#181818] bg-black/80 p-1.5 shadow-2xl backdrop-blur">
+                <div className="absolute bottom-3 right-3 flex flex-wrap justify-end gap-2 rounded-xs border border-[#181818] bg-black/80 p-1.5 shadow-2xl backdrop-blur">
                   <button
                     type="button"
                     onClick={() => setZoomScale(1)}
                     aria-pressed={zoomScale === 1}
-                    className="rounded-[2px] px-3 py-1 text-[10px] font-medium text-[#c0c0c0] transition hover:bg-white/10 aria-pressed:bg-white/15"
+                    className="rounded-xs px-3 py-1 text-[10px] font-medium text-[#c0c0c0] transition hover:bg-white/10 aria-pressed:bg-white/15"
                   >
                     Fit
                   </button>
@@ -650,7 +650,7 @@ function ReviewGallery({
                     type="button"
                     onClick={() => setZoomScale(2)}
                     aria-pressed={zoomScale === 2}
-                    className="rounded-[2px] px-3 py-1 text-[10px] font-medium text-[#c0c0c0] transition hover:bg-white/10 aria-pressed:bg-white/15"
+                    className="rounded-xs px-3 py-1 text-[10px] font-medium text-[#c0c0c0] transition hover:bg-white/10 aria-pressed:bg-white/15"
                   >
                     2×
                   </button>
@@ -658,7 +658,7 @@ function ReviewGallery({
                     type="button"
                     onClick={() => setZoomScale(3)}
                     aria-pressed={zoomScale === 3}
-                    className="rounded-[2px] px-3 py-1 text-[10px] font-medium text-[#c0c0c0] transition hover:bg-white/10 aria-pressed:bg-white/15"
+                    className="rounded-xs px-3 py-1 text-[10px] font-medium text-[#c0c0c0] transition hover:bg-white/10 aria-pressed:bg-white/15"
                   >
                     3×
                   </button>
@@ -666,13 +666,13 @@ function ReviewGallery({
                     href={selectedImageUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-[2px] px-3 py-1 text-[10px] font-medium text-[color:var(--color-accent)] transition hover:bg-white/10"
+                    className="rounded-xs px-3 py-1 text-[10px] font-medium text-(--color-accent) transition hover:bg-white/10"
                   >
                     Open full size
                   </a>
                 </div>
               </div>
-              <aside className="space-y-4 rounded-[2px] border border-[#181818] bg-[#090909] p-4">
+              <aside className="space-y-4 rounded-xs border border-[#181818] bg-[#090909] p-4">
                 <div className="space-y-1 text-[12px] text-[#777]">
                   <p className="text-[#d4d4d4]">{selectedImage.width}×{selectedImage.height}</p>
                   <p>Status: {selectedImage.approval_status ?? 'pending'}</p>
@@ -683,7 +683,7 @@ function ReviewGallery({
                     value={rejectReason}
                     onChange={(event) => setRejectReason(event.currentTarget.value)}
                     rows={4}
-                    className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-3 py-2 text-[12px] text-[#d4d4d4] outline-none placeholder:text-[#222] focus:border-[color:var(--color-accent-line)]"
+                    className="w-full rounded-xs border border-[#181818] bg-[#080808] px-3 py-2 text-[12px] text-[#d4d4d4] outline-none placeholder:text-[#222] focus:border-accent-line"
                     placeholder="Too vertical, wrong character, unreadable layout…"
                   />
                 </label>
@@ -776,10 +776,10 @@ function ProjectPage({
       <header className="flex flex-col gap-3 border-b border-[#181818] pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <div className="mb-3 flex flex-wrap gap-2">
-            <button type="button" onClick={onShowOverview} className="rounded-[2px] border border-[#242424] px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-[#777] transition hover:border-[#3a8a3a66] hover:text-[#3a8a3a]">
+            <button type="button" onClick={onShowOverview} className="rounded-xs border border-[#242424] px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-[#777] transition hover:border-[#3a8a3a66] hover:text-[#3a8a3a]">
               Projects overview
             </button>
-            <button type="button" onClick={onOpenReviews} className="rounded-[2px] border border-[#242424] px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-[#777] transition hover:border-[#3a8a3a66] hover:text-[#3a8a3a]">
+            <button type="button" onClick={onOpenReviews} className="rounded-xs border border-[#242424] px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-[#777] transition hover:border-[#3a8a3a66] hover:text-[#3a8a3a]">
               Reviews queue
             </button>
           </div>
@@ -833,14 +833,14 @@ function ProjectPage({
                       <div className="text-[9px] uppercase tracking-[0.22em] text-[#343434]">Working project page</div>
                       <h2 className="mt-1 text-[16px] font-semibold text-[#dcdcdc]">Continuity + next operator action</h2>
                     </div>
-                    <span className="rounded-[2px] border border-[#1f2f1f] bg-[#081008] px-2 py-1 font-mono text-[10px] text-[#3a8a3a]">WORKING</span>
+                    <span className="rounded-xs border border-[#1f2f1f] bg-[#081008] px-2 py-1 font-mono text-[10px] text-[#3a8a3a]">WORKING</span>
                   </div>
-                  <p className="min-h-20 rounded-[2px] border border-[#181818] bg-[#070707] p-3 text-[12px] leading-6 text-[#9a9a9a]">
+                  <p className="min-h-20 rounded-xs border border-[#181818] bg-[#070707] p-3 text-[12px] leading-6 text-[#9a9a9a]">
                     {nextAction}
                   </p>
-                  {project.notes ? <p className="mt-2 rounded-[2px] border border-[#181818] bg-[#080808] p-2 text-[10px] text-[#666]">{project.notes}</p> : null}
+                  {project.notes ? <p className="mt-2 rounded-xs border border-[#181818] bg-[#080808] p-2 text-[10px] text-[#666]">{project.notes}</p> : null}
                   {latestRefinement ? (
-                    <div className="mt-3 rounded-[2px] border border-[#1f2f1f] bg-[#081008] px-3 py-2 text-[10px] text-[#9ed29e]">
+                    <div className="mt-3 rounded-xs border border-[#1f2f1f] bg-[#081008] px-3 py-2 text-[10px] text-[#9ed29e]">
                       Latest: {formatRefinementWorkflow(latestRefinement.workflow_name)} {latestRefinement.status} · {latestRefinement.input_asset_ids.length} input{latestRefinement.input_asset_ids.length === 1 ? '' : 's'}
                     </div>
                   ) : null}
@@ -864,7 +864,7 @@ function ProjectPage({
                   </div>
                 </div>
                 {refinementCandidates.length === 0 ? (
-                  <p className="m-3 rounded-[2px] border border-dashed border-[#181818] bg-[#080808] p-3 text-[12px] text-[#555]">No stills are ready for refinement routing yet.</p>
+                  <p className="m-3 rounded-xs border border-dashed border-[#181818] bg-[#080808] p-3 text-[12px] text-[#555]">No stills are ready for refinement routing yet.</p>
                 ) : (
                   <div className="grid gap-px bg-[#181818] sm:grid-cols-2 2xl:grid-cols-3 min-[1800px]:grid-cols-4">
                     {refinementCandidates.map((asset, index) => (
@@ -920,7 +920,7 @@ function ProjectPage({
               <div className="border-b border-[#181818] p-3">
                 <div className="mb-2 text-[9px] uppercase tracking-[0.22em] text-[#343434]">Add project asset</div>
                 <div className="space-y-2">
-                  <select value={assetType} onChange={(event) => setAssetType(event.currentTarget.value as ProjectAsset['asset_type'])} className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] text-[#aaa] outline-none">
+                  <select value={assetType} onChange={(event) => setAssetType(event.currentTarget.value as ProjectAsset['asset_type'])} className="w-full rounded-xs border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] text-[#aaa] outline-none">
                     <option value="character_sheet">Character sheet — intact</option>
                     <option value="single_still">Single still — route</option>
                     <option value="cinematic_shot_grid">Shot grid — split later</option>
@@ -928,12 +928,12 @@ function ProjectPage({
                     <option value="refined_shot">Comfy refined shot</option>
                     <option value="other">Other / hold</option>
                   </select>
-                  <input value={assetLabel} onChange={(event) => setAssetLabel(event.currentTarget.value)} placeholder="Asset label" className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] text-[#ddd] outline-none" />
+                  <input value={assetLabel} onChange={(event) => setAssetLabel(event.currentTarget.value)} placeholder="Asset label" className="w-full rounded-xs border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] text-[#ddd] outline-none" />
                   {assetType === 'character_sheet' ? (
-                    <input value={characterName} onChange={(event) => setCharacterName(event.currentTarget.value)} placeholder="Character name" className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] text-[#ddd] outline-none" />
+                    <input value={characterName} onChange={(event) => setCharacterName(event.currentTarget.value)} placeholder="Character name" className="w-full rounded-xs border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] text-[#ddd] outline-none" />
                   ) : null}
-                  <textarea value={assetNotes} onChange={(event) => setAssetNotes(event.currentTarget.value)} rows={3} placeholder="Continuity notes / next action" className="w-full rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] text-[#ddd] outline-none" />
-                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setAssetFile(event.currentTarget.files?.[0] ?? null)} className="w-full text-[10px] text-[#555] file:mr-2 file:rounded-[2px] file:border-0 file:bg-[#181818] file:px-2 file:py-1.5 file:text-[10px] file:text-[#aaa]" />
+                  <textarea value={assetNotes} onChange={(event) => setAssetNotes(event.currentTarget.value)} rows={3} placeholder="Continuity notes / next action" className="w-full rounded-xs border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] text-[#ddd] outline-none" />
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setAssetFile(event.currentTarget.files?.[0] ?? null)} className="w-full text-[10px] text-[#555] file:mr-2 file:rounded-xs file:border-0 file:bg-[#181818] file:px-2 file:py-1.5 file:text-[10px] file:text-[#aaa]" />
                   <Button type="button" onClick={submitAsset} disabled={!assetFile || isBusy} className="w-full">
                     {isBusy ? 'Adding…' : 'Add asset'}
                   </Button>
@@ -944,20 +944,20 @@ function ProjectPage({
                 <div className="mb-2 text-[9px] uppercase tracking-[0.22em] text-[#343434]">Refinement log</div>
                 <div className="space-y-[6px]">
                   {project.refinement_jobs.length ? project.refinement_jobs.slice(-8).reverse().map((job) => (
-                    <div key={job.job_id} className="rounded-[2px] border border-[#181818] bg-[#080808] p-2">
+                    <div key={job.job_id} className="rounded-xs border border-[#181818] bg-[#080808] p-2">
                       <div className="flex items-center justify-between gap-2">
                         <span className="truncate text-[10px] text-[#777]">{formatRefinementWorkflow(job.workflow_name)}</span>
                         <span className="font-mono text-[9px] text-[#3a8a3a]">{job.status}</span>
                       </div>
                       <div className="mt-1 font-mono text-[9px] text-[#333]">{job.input_asset_ids.length} in · {job.result_asset_ids.length} out</div>
                     </div>
-                  )) : <p className="rounded-[2px] border border-dashed border-[#181818] bg-[#080808] p-3 text-[10px] text-[#444]">No ComfyUI routing decisions yet.</p>}
+                  )) : <p className="rounded-xs border border-dashed border-[#181818] bg-[#080808] p-3 text-[10px] text-[#444]">No ComfyUI routing decisions yet.</p>}
                 </div>
               </div>
 
               <div className="p-3">
                 <div className="mb-2 text-[9px] uppercase tracking-[0.22em] text-[#343434]">Terminal</div>
-                <div className="space-y-[4px] font-mono text-[9px] leading-tight">
+                <div className="space-y-1 font-mono text-[9px] leading-tight">
                   <div><span className="text-[#3a8a3a99]">[ROUTE]</span> <span className="text-[#555]">awaiting operator image decisions</span></div>
                   <div><span className="text-[#3a8a3a99]">[FACE]</span> <span className="text-[#444]">far shots → crop / replace / stitch</span></div>
                   <div><span className="text-[#3a8a3a99]">[VIDEO]</span> <span className="text-[#444]">final approvals gate generation</span></div>
@@ -989,7 +989,7 @@ function AssetDecisionCard({
 }) {
   return (
     <div className="bg-[#0b0b0b] p-2">
-      <a href={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} target="_blank" rel="noreferrer" className="group block overflow-hidden rounded-[2px] border border-[#181818] bg-black">
+      <a href={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} target="_blank" rel="noreferrer" className="group block overflow-hidden rounded-xs border border-[#181818] bg-black">
         <img src={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} alt={asset.label} className="aspect-video w-full object-contain transition duration-300 group-hover:scale-[1.015]" />
       </a>
       <div className="mt-2 flex items-start justify-between gap-2">
@@ -997,7 +997,7 @@ function AssetDecisionCard({
           <p className="truncate text-[10px] font-medium text-[#d8d8d8]">{asset.label}</p>
           <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-[#444]">#{index + 1} · {asset.width}×{asset.height}</p>
         </div>
-        <span className="rounded-[2px] border border-[#181818] bg-[#080808] px-1.5 py-1 font-mono text-[9px] text-[#555]">{asset.asset_type}</span>
+        <span className="rounded-xs border border-[#181818] bg-[#080808] px-1.5 py-1 font-mono text-[9px] text-[#555]">{asset.asset_type}</span>
       </div>
       {asset.notes ? <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-[#666]">{asset.notes}</p> : null}
       <div className="mt-2 grid grid-cols-3 gap-1.5">
@@ -1011,7 +1011,7 @@ function AssetDecisionCard({
 
 function AssetMiniCard({ projectId, asset, title, subtitle }: { projectId: string; asset: ProjectAsset; title: string; subtitle: string }) {
   return (
-    <a href={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-[2px] border border-[#181818] bg-[#080808] transition hover:border-[#3a8a3a]/50">
+    <a href={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xs border border-[#181818] bg-[#080808] transition hover:border-[#3a8a3a]/50">
       <img src={asset.public_url || projectAssetUrl(projectId, asset.asset_path)} alt={asset.label} className="aspect-video w-full bg-black object-cover object-top" />
       <span className="block p-2">
         <span className="block truncate text-[10px] font-medium text-[#d8d8d8]">{title}</span>
@@ -1051,7 +1051,7 @@ function InfoCell({ label, value }: { label: string; value: string | number }) {
 function ProjectPanel({ title, eyebrow, empty, children }: { title: string; eyebrow: string; empty: string; children: ReactNode }) {
   const hasChildren = Array.isArray(children) ? children.some(Boolean) : Boolean(children)
   return (
-    <section className="space-y-3 rounded-[2px] border border-[#181818] bg-[#080808] p-3">
+    <section className="space-y-3 rounded-xs border border-[#181818] bg-[#080808] p-3">
       <div>
         <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#343434]">{eyebrow}</p>
         <h3 className="mt-1 text-[13px] font-medium text-[#e0e0e0]">{title}</h3>
@@ -1081,11 +1081,11 @@ function ProjectStrip({
 }) {
   if (projects.length === 0) {
     return (
-      <section className="rounded-[2px] border border-dashed border-[#242424] bg-[#090909] p-5">
+      <section className="rounded-xs border border-dashed border-[#242424] bg-[#090909] p-5">
         <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#343434]">No projects yet</p>
         <h2 className="mt-2 text-[16px] font-semibold text-[#e0e0e0]">Start from images, then create a project.</h2>
         <p className="mt-2 max-w-2xl text-[12px] leading-6 text-[#666]">Projects are working pages for approved looks, character sheets, shot grids, and Comfy routing. Upload images in Reviews first, publish the keepers, then create the project workspace.</p>
-        <button type="button" onClick={onOpenReviews} className="mt-4 rounded-[2px] border border-[color:var(--color-accent-line)] px-2 py-1 font-mono text-[8px] uppercase tracking-[0.16em] text-[color:var(--color-accent)] transition hover:border-[color:var(--color-accent)] hover:bg-[color:var(--color-accent-soft)]">
+        <button type="button" onClick={onOpenReviews} className="mt-4 rounded-xs border border-accent-line px-2 py-1 font-mono text-[8px] uppercase tracking-[0.16em] text-(--color-accent) transition hover:border-(--color-accent) hover:bg-accent-soft">
           Go to reviews / upload images
         </button>
       </section>
@@ -1103,7 +1103,7 @@ function ProjectStrip({
             key={project.project_id}
             type="button"
             onClick={() => onOpenProject(project.project_id)}
-            className="group overflow-hidden rounded-[2px] border border-[#181818] bg-[#090909] text-left transition hover:border-[#3a8a3a]/60 hover:bg-white/[0.04]"
+            className="group overflow-hidden rounded-xs border border-[#181818] bg-[#090909] text-left transition hover:border-[#3a8a3a]/60 hover:bg-white/[0.04]"
           >
             {project.hero_asset_path ? (
               <img src={project.hero_public_url || projectAssetUrl(project.project_id, project.hero_asset_path)} alt={project.title} className="aspect-video w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
@@ -1113,7 +1113,7 @@ function ProjectStrip({
               <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-[#343434]">
                 {project.asset_count} asset{project.asset_count === 1 ? '' : 's'} · {project.character_count} character{project.character_count === 1 ? '' : 's'}
               </span>
-              <span className="mt-2 block text-[10px] font-medium text-[color:var(--color-accent)]">
+              <span className="mt-2 block text-[10px] font-medium text-(--color-accent)">
                 {loadingProjectId === project.project_id ? 'Opening project…' : 'Open project page'}
               </span>
             </span>
@@ -1136,10 +1136,10 @@ function PendingReviewQueue({
   const pendingReviews = sortReviewsNewest(reviews.filter(hasPendingImages))
 
   return (
-    <section className="space-y-3 border border-[color:var(--color-accent-line)]/60 bg-[color:var(--color-accent-soft)]/20 p-4">
+    <section className="space-y-3 border border-accent-line/60 bg-accent-soft/20 p-4">
       <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[color:var(--color-accent)]">Needs review</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-(--color-accent)">Needs review</p>
           <h2 className="mt-1 text-[16px] font-semibold text-[#e0e0e0]">Pending review queue</h2>
           <p className="mt-1 text-[12px] text-[#777]">Click a thumbnail once to open the full image inspector, then approve or deny.</p>
         </div>
@@ -1155,7 +1155,7 @@ function PendingReviewQueue({
               key={review.review_id}
               type="button"
               onClick={() => onOpenReview(review.review_id)}
-              className="group grid w-full grid-cols-[88px_1fr] items-stretch overflow-hidden rounded-[2px] border border-[#181818] bg-[#080808] text-left transition hover:border-[color:var(--color-accent-line)] hover:bg-white/[0.04] sm:grid-cols-[128px_1fr_auto]"
+              className="group grid w-full grid-cols-[88px_1fr] items-stretch overflow-hidden rounded-xs border border-[#181818] bg-[#080808] text-left transition hover:border-accent-line hover:bg-white/[0.04] sm:grid-cols-[128px_1fr_auto]"
             >
               <ReviewCover review={review} className="aspect-video h-full min-h-16 w-full object-cover" />
               <span className="flex min-w-0 flex-col justify-center p-3">
@@ -1165,7 +1165,7 @@ function PendingReviewQueue({
                   {(review.pending_count ?? review.image_count)} pending · click thumbnail to inspect
                 </span>
               </span>
-              <span className="hidden items-center px-4 text-[10px] font-medium text-[color:var(--color-accent)] sm:flex">
+              <span className="hidden items-center px-4 text-[10px] font-medium text-(--color-accent) sm:flex">
                 {loadingReviewId === review.review_id ? 'Loading…' : 'Review now'}
               </span>
             </button>
@@ -1200,7 +1200,7 @@ function ReviewHistory({
       {historyReviews.length === 0 ? (
         <p className="text-[12px] text-[#555]">No completed image reviews yet. Approved, rejected, or published sets will appear here after they leave the pending queue.</p>
       ) : (
-        <div className="divide-y divide-white/[0.06] overflow-hidden rounded-[2px] border border-[#181818] bg-[#090909]">
+        <div className="divide-y divide-white/[0.06] overflow-hidden rounded-xs border border-[#181818] bg-[#090909]">
           {historyReviews.map((review) => (
             <button
               key={review.review_id}
@@ -1217,7 +1217,7 @@ function ReviewHistory({
                   {review.image_count} image{review.image_count === 1 ? '' : 's'} · {review.pending_count ?? 0} pending · {review.published_count ?? 0} published
                 </span>
               </span>
-              <span className="rounded-[2px] border border-[#181818] bg-white/[0.04] px-3 py-1.5 text-[10px] font-medium text-[#c0c0c0]">
+              <span className="rounded-xs border border-[#181818] bg-white/[0.04] px-3 py-1.5 text-[10px] font-medium text-[#c0c0c0]">
                 {loadingReviewId === review.review_id ? 'Loading…' : 'View'}
               </span>
             </button>

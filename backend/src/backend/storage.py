@@ -70,7 +70,7 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def create_job(
-    upload: UploadFile,
+    upload: UploadFile | str,
     *,
     split_mode: VideoSplitMode = VideoSplitMode.SCENES,
     target_count: int = 10,
@@ -85,7 +85,7 @@ def create_job(
     for directory in (source_dir, clips_dir, thumbnails_dir):
         directory.mkdir(parents=True, exist_ok=True)
 
-    source_file = source_dir / sanitize_filename(upload.filename)
+    source_file = source_dir / sanitize_filename(upload if isinstance(upload, str) else upload.filename)
     paths = JobPaths(
         job_id=job_id,
         job_dir=job_dir,
@@ -114,20 +114,23 @@ def create_job(
 
 
 def get_job_paths(job_id: str) -> JobPaths:
+    if not re.fullmatch(r"[a-f0-9]{32}", job_id):
+        raise HTTPException(status_code=404, detail="Unknown job.")
     settings = get_settings()
     job_dir = settings.data_dir / job_id
     if not job_dir.exists():
         raise HTTPException(status_code=404, detail=f"Unknown job: {job_id}")
 
     source_dir = job_dir / "source"
-    source_files = sorted(source_dir.iterdir()) if source_dir.exists() else []
-    if not source_files:
-        raise HTTPException(status_code=500, detail=f"Source file missing for job {job_id}")
+    # URL jobs have a durable state before a source file exists. Never select a
+    # partial download (or an unrelated directory entry) as the source.
+    state = _read_json(job_dir / "status.json")
+    source_file = source_dir / sanitize_filename(state["source_video"])
 
     return JobPaths(
         job_id=job_id,
         job_dir=job_dir,
-        source_file=source_files[0],
+        source_file=source_file,
         clips_dir=job_dir / "clips",
         thumbnails_dir=job_dir / "thumbnails",
         state_file=job_dir / "status.json",

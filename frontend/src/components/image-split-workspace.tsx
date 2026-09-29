@@ -239,11 +239,11 @@ export function ImageSplitWorkspace() {
             if (!dragDepth.current) setIsDragging(false)
           }}
           onDrop={handleDrop}
-          className={cn('transition-colors', isDragging && 'border-[color:var(--color-accent)] ring-2 ring-[color:var(--color-accent)]')}
+          className={cn('transition-colors', isDragging && 'border-(--color-accent) ring-2 ring-(--color-accent)')}
         >
           {isDragging ? (
-            <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-sm border-2 border-dashed border-[color:var(--color-accent)] bg-[#10180f]/95 text-center">
-              <Images className="h-10 w-10 text-[color:var(--color-accent)]" />
+            <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-sm border-2 border-dashed border-(--color-accent) bg-[#10180f]/95 text-center">
+              <Images className="h-10 w-10 text-(--color-accent)" />
               <p className="text-lg font-medium text-[#e0e0e0]">Drop images here</p>
               <p className="text-xs text-[#aaa]">{imageFiles.length ? 'Release to replace the source batch' : 'Release to add your source batch'}</p>
               <p className="font-mono text-[10px] text-[#aaa]">PNG · JPG · WebP · up to 32 images</p>
@@ -252,7 +252,7 @@ export function ImageSplitWorkspace() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-[0.28em] text-[#555]">
               <span>Source batch</span>
-              <span className={imageFiles.length ? 'text-[color:var(--color-accent)]' : 'text-[#343434]'}>
+              <span className={imageFiles.length ? 'text-(--color-accent)' : 'text-[#343434]'}>
                 {imageFiles.length ? `${imageFiles.length} queued` : 'up to 32'}
               </span>
             </div>
@@ -468,7 +468,7 @@ export function ImageSplitWorkspace() {
           </div>
           {manifest ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <span className="mr-1 font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-accent)]">
+              <span className="mr-1 font-mono text-[9px] uppercase tracking-[0.18em] text-(--color-accent)">
                 {selectedCount} selected
               </span>
               <Button
@@ -509,7 +509,7 @@ export function ImageSplitWorkspace() {
         </div>
 
         {!manifest ? (
-          <div className="rounded-[2px] border border-dashed border-[#181818] bg-white/[0.01] px-6 py-20 text-center text-[12px] text-[#555]">
+          <div className="rounded-xs border border-dashed border-[#181818] bg-white/[0.01] px-6 py-20 text-center text-[12px] text-[#555]">
             Processed panels will appear here once you upload one or more plates and tap &ldquo;Run splitter.&rdquo;
           </div>
         ) : (
@@ -520,13 +520,13 @@ export function ImageSplitWorkspace() {
                 <figure
                   key={`${panel.index}-${panel.asset_path}`}
                   className={cn(
-                    'space-y-2 rounded-[2px] border bg-white/[0.01] p-3 transition-colors [contain-intrinsic-size:320px] [content-visibility:auto]',
+                    'space-y-2 rounded-xs border bg-white/[0.01] p-3 transition-colors [contain-intrinsic-size:320px] [content-visibility:auto]',
                     selected
-                      ? 'border-[color:var(--color-accent-line)] bg-[color:var(--color-accent-soft)]'
+                      ? 'border-accent-line bg-accent-soft'
                       : 'border-white/[0.05]',
                   )}
                 >
-                  <div className="relative overflow-hidden rounded-sm border border-white/[0.04] bg-black">
+                  <div className="relative overflow-hidden rounded-sm border border-white/4 bg-black">
                     <img
                       alt={panel.label}
                       className="h-auto w-full max-w-full"
@@ -541,7 +541,7 @@ export function ImageSplitWorkspace() {
                       className={cn(
                         'absolute left-3 top-3 grid h-8 w-8 place-items-center border backdrop-blur-sm transition-colors',
                         selected
-                          ? 'border-[color:var(--color-accent)] bg-[rgba(16,28,15,0.9)] text-[color:var(--color-accent)]'
+                          ? 'border-(--color-accent) bg-[rgba(16,28,15,0.9)] text-(--color-accent)'
                           : 'border-white/15 bg-black/70 text-[#777] hover:border-white/30 hover:text-white',
                       )}
                     >

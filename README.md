@@ -14,6 +14,51 @@ The video page offers three sampling modes before upload:
 - **Equal count** — creates an exact total (for example 10) across the complete video and extracts the midpoint image from every equal slice.
 - **Time step** — creates one slice and midpoint image every selected number of seconds, with a shorter final slice when needed.
 
+## YouTube import
+
+In **Source**, choose **YouTube link**, select a split mode, then **Download and split**.
+The API equivalent is `POST /api/jobs/youtube` with JSON:
+
+```json
+{"url":"https://www.youtube.com/watch?v=VIDEO_ID","split_mode":"scenes","use_cookies":false,"clip_start_seconds":90,"clip_end_seconds":240}
+```
+
+Optional `clip_start_seconds` and `clip_end_seconds` limit import to that range (seconds from the start of the video). Omit either bound to use the start or end of the video.
+
+The response is HTTP 202 with a normal job ID. Poll `GET /api/jobs/{job_id}` for
+download bytes and the downloading / preparing / scene detection / extraction
+stages, then use the existing result and asset endpoints. The source preview is
+withheld until download and merging complete. Only individual HTTPS YouTube
+videos are accepted; playlists, arbitrary URLs, and live streams are excluded.
+Imports default to 1080p, 1 GiB, one hour of video, and a 15-minute download
+timeout. At most two downloads run per backend process. A busy or failed job
+requires an explicit new pass; it is never silently retried. Background jobs
+run in the existing process: keep the server running until a job finishes.
+
+### Private YouTube cookies
+
+Following Yippr's `YIPPR_YTDLP_COOKIES_FILE` pattern, set
+`SPLITTER_YOUTUBE_COOKIES_FILE` to an operator-managed Netscape cookie file,
+outside `data/jobs` and the frontend. In Docker, place it at
+`/app/data/private/youtube.cookies.txt` in the persistent volume and set that path
+in the untracked server `.env`. Keep access restricted to the service account.
+Then select **Use the server’s private YouTube cookies** for the import.
+
+Use [yt-dlp's official YouTube cookie-export instructions](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies)
+for your own authorized YouTube session. Do not paste cookie contents into chat,
+commit them, or export an entire browser profile. Splitter copies only unexpired
+YouTube-domain cookies into a temporary private directory for the job and removes
+that copy afterward. There is no browser-cookie extraction or cookie upload API.
+The original cookie file is never modified. Errors do not return raw downloader
+output. Cookies do not guarantee access: YouTube can still require a fresh
+session or rate-limit the server; the UI reports that failure and accepts a local
+video file instead.
+
+The backend installs `yt-dlp[default]` (including EJS); the container includes
+Deno. Local development needs Deno or Node 22+ on PATH. To update the downloader,
+run `uv lock --upgrade-package yt-dlp --upgrade-package yt-dlp-ejs` in `backend`,
+then `uv sync --frozen`, run the tests and rebuild the container.
+
 ## Stack
 
 - Backend: FastAPI, PySceneDetect, ffmpeg

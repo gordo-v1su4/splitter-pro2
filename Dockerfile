@@ -5,7 +5,9 @@ RUN bun install --frozen-lockfile
 COPY frontend ./
 RUN bun run build
 
+FROM denoland/deno:bin-2.5.2 AS deno
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS runtime
+COPY --from=deno /deno /usr/local/bin/deno
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 COPY backend /app/backend

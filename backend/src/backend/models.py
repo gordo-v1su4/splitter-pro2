@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class JobStatus(StrEnum):
@@ -76,6 +76,30 @@ class JobState(BaseModel):
     segment_count: int = 0
     progress_completed: int = 0
     progress_total: int = 0
+    source_url: str | None = None
+    source_ready: bool = True
+    downloaded_bytes: int = 0
+    download_total_bytes: int | None = None
+    clip_start_seconds: float | None = None
+    clip_end_seconds: float | None = None
+
+
+class YouTubeJobRequest(BaseModel):
+    url: str = Field(min_length=1, max_length=2048)
+    split_mode: VideoSplitMode = VideoSplitMode.SCENES
+    target_count: int = Field(default=10, ge=2, le=60)
+    interval_seconds: float = Field(default=5.0, ge=0.5, le=300.0)
+    use_cookies: bool = False
+    clip_start_seconds: float | None = Field(default=None, ge=0)
+    clip_end_seconds: float | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def validate_clip_range(self) -> YouTubeJobRequest:
+        if self.clip_start_seconds is None or self.clip_end_seconds is None:
+            return self
+        if self.clip_end_seconds <= self.clip_start_seconds:
+            raise ValueError("clip_end_seconds must be greater than clip_start_seconds")
+        return self
 
 
 class JobCreatedResponse(BaseModel):

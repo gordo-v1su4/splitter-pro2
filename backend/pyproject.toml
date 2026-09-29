@@ -12,6 +12,7 @@ dependencies = [
     "python-multipart>=0.0.22",
     "scenedetect[opencv-headless]<0.7",
     "uvicorn[standard]>=0.42.0",
+    "yt-dlp[default]>=2026.8.19",
 ]
 
 [project.scripts]

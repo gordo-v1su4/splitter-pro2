@@ -15,7 +15,9 @@ import {
   type JobManifest,
   type JobState,
   type VideoSplitOptions,
+  type YouTubeClipRange,
   submitVideo,
+  submitYouTube,
 } from './lib/api'
 import { formatDuration } from './lib/utils'
 
@@ -39,6 +41,7 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const pollFailureCountRef = useRef(0)
+  const activeJobRef = useRef<string | null>(null)
 
   useEffect(() => {
     try {
@@ -51,6 +54,7 @@ function App() {
   async function loadManifest(jobId: string, attempt = 0) {
     try {
       const nextManifest = await fetchJobResult(jobId)
+      if (activeJobRef.current !== jobId) return
       startTransition(() => {
         setManifest(nextManifest)
         setSelectedSegmentIndices([])
@@ -58,6 +62,7 @@ function App() {
       pollFailureCountRef.current = 0
       setError(null)
     } catch (cause) {
+      if (activeJobRef.current !== jobId) return
       if (attempt < 2) {
         window.setTimeout(() => {
           void loadManifest(jobId, attempt + 1)
@@ -71,6 +76,7 @@ function App() {
   const pollJob = useEffectEvent(async (jobId: string) => {
     try {
       const nextJob = await fetchJob(jobId)
+      if (activeJobRef.current !== jobId) return
       pollFailureCountRef.current = 0
       startTransition(() => {
         setJob(nextJob)
@@ -83,6 +89,7 @@ function App() {
         setError(nextJob.error)
       }
     } catch (cause) {
+      if (activeJobRef.current !== jobId) return
       pollFailureCountRef.current += 1
       if (pollFailureCountRef.current >= 3) {
         setError(cause instanceof Error ? cause.message : 'Unable to refresh job state.')
@@ -90,29 +97,40 @@ function App() {
     }
   })
 
+  const jobId = job?.job_id
+  const jobStatus = job?.status
   useEffect(() => {
-    if (!job || job.status === 'completed' || job.status === 'failed') {
+    if (!jobId || jobStatus === 'completed' || jobStatus === 'failed') {
       return undefined
     }
 
-    void pollJob(job.job_id)
+    void pollJob(jobId)
     const intervalId = window.setInterval(() => {
-      void pollJob(job.job_id)
+      void pollJob(jobId)
     }, 1500)
 
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [job])
+  }, [jobId, jobStatus])
 
   async function handleUpload(file: File, options: VideoSplitOptions) {
+    await startJob(() => submitVideo(file, options))
+  }
+
+  async function handleYouTube(url: string, options: VideoSplitOptions, useCookies: boolean, clip?: YouTubeClipRange) {
+    await startJob(() => submitYouTube(url, options, useCookies, clip))
+  }
+
+  async function startJob(submit: () => Promise<JobState>) {
     setIsUploading(true)
     setError(null)
     setManifest(null)
     setSelectedSegmentIndices([])
     pollFailureCountRef.current = 0
     try {
-      const createdJob = await submitVideo(file, options)
+      const createdJob = await submit()
+      activeJobRef.current = createdJob.job_id
       startTransition(() => {
         setJob(createdJob)
       })
@@ -120,13 +138,14 @@ function App() {
         await loadManifest(createdJob.job_id)
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Upload failed.')
+      setError(cause instanceof Error ? cause.message : 'Unable to import this video.')
     } finally {
       setIsUploading(false)
     }
   }
 
   function resetJob() {
+    activeJobRef.current = null
     setJob(null)
     setManifest(null)
     setSelectedSegmentIndices([])
@@ -156,7 +175,7 @@ function App() {
     <main className="relative h-screen overflow-hidden bg-[#070707] text-[#c0c0c0]" style={{ fontFamily: "'Inter','SF Pro Display',system-ui,sans-serif" }}>
       <AccessGate />
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[360px] opacity-50"
+        className="pointer-events-none absolute inset-x-0 top-0 h-90 opacity-50"
         style={{
           background:
             'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(100, 115, 90, 0.06), transparent 60%)',
@@ -190,13 +209,14 @@ function App() {
                 onOpenReviews={() => selectWorkspace('reviews')}
               />
             ) : (
-              <div className="mx-auto w-full max-w-[1680px]">
+              <div className="mx-auto w-full max-w-420">
                 {hasActiveWork ? <HeroCompact /> : <HeroFull />}
 
                 <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)]">
                   <UploadPanel
                     isUploading={isUploading}
                     onUpload={handleUpload}
+                    onYouTube={handleYouTube}
                     job={job}
                     onReset={resetJob}
                   />
@@ -263,15 +283,15 @@ function StudioSidebar({
           onClick={onToggleCollapsed}
           title="Expand module panel"
           aria-label="Expand module panel"
-          className="flex h-9 w-full items-center justify-center border-b border-[#181818] text-[12px] text-[#777] transition-colors hover:bg-[#131313] hover:text-[color:var(--color-accent)]"
+          className="flex h-9 w-full items-center justify-center border-b border-[#181818] text-[12px] text-[#777] transition-colors hover:bg-[#131313] hover:text-(--color-accent)"
         >
           »
         </button>
-        <div className="mt-3 grid grid-cols-2 gap-[2px]">
-          <div className="h-[5px] w-[5px] bg-[#3a8a3a]" />
-          <div className="h-[5px] w-[5px] bg-[#2a2a2a]" />
-          <div className="h-[5px] w-[5px] bg-[#2a2a2a]" />
-          <div className="h-[5px] w-[5px] bg-[#3a8a3a]" />
+        <div className="mt-3 grid grid-cols-2 gap-0.5">
+          <div className="h-1.25 w-1.25 bg-[#3a8a3a]" />
+          <div className="h-1.25 w-1.25 bg-[#2a2a2a]" />
+          <div className="h-1.25 w-1.25 bg-[#2a2a2a]" />
+          <div className="h-1.25 w-1.25 bg-[#3a8a3a]" />
         </div>
         <div className="mt-4 flex flex-1 flex-col items-center gap-2 overflow-y-auto py-1">
           {modules.map((module) => (
@@ -282,9 +302,9 @@ function StudioSidebar({
               disabled={module.disabled}
               title={`${module.label} · ${module.sub}`}
               aria-label={`${module.label} · ${module.sub}`}
-              className={`flex h-6 w-6 items-center justify-center rounded-[2px] border transition-colors ${module.disabled ? 'cursor-not-allowed border-red-500/20 bg-red-500/[0.04]' : activeTab === module.tab ? 'border-[color:var(--color-accent)]' : 'border-transparent hover:border-[#333]'}`}
+              className={`flex h-6 w-6 items-center justify-center rounded-xs border transition-colors ${module.disabled ? 'cursor-not-allowed border-red-500/20 bg-red-500/4' : activeTab === module.tab ? 'border-(--color-accent)' : 'border-transparent hover:border-[#333]'}`}
             >
-              <span className={`h-1.5 w-1.5 rounded-full ${module.disabled ? 'bg-red-500/60' : activeTab === module.tab ? 'bg-[color:var(--color-accent)]' : 'bg-[#2a2a2a]'}`} />
+              <span className={`h-1.5 w-1.5 rounded-full ${module.disabled ? 'bg-red-500/60' : activeTab === module.tab ? 'bg-(--color-accent)' : 'bg-[#2a2a2a]'}`} />
             </button>
           ))}
         </div>
@@ -296,7 +316,7 @@ function StudioSidebar({
           onClick={onToggleCollapsed}
           title="Open navigation drawer"
           aria-label="Open navigation drawer"
-          className="group absolute left-full top-1/2 z-30 flex h-[72px] w-5 -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-r-[3px] border-y border-r border-[#242424] bg-[#0c0c0c] text-[#555] shadow-[4px_0_14px_rgba(0,0,0,0.45)] transition-[width,border-color,color,background-color] hover:w-6 hover:border-[#3a8a3a]/70 hover:bg-[#111] hover:text-[#6aae6a] focus-visible:w-6 focus-visible:border-[#3a8a3a] focus-visible:text-[#75b875] focus-visible:outline-none"
+          className="group absolute left-full top-1/2 z-30 flex h-18 w-5 -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-r-[3px] border-y border-r border-[#242424] bg-[#0c0c0c] text-[#555] shadow-[4px_0_14px_rgba(0,0,0,0.45)] transition-[width,border-color,color,background-color] hover:w-6 hover:border-[#3a8a3a]/70 hover:bg-[#111] hover:text-[#6aae6a] focus-visible:w-6 focus-visible:border-[#3a8a3a] focus-visible:text-[#75b875] focus-visible:outline-none"
         >
           <span className="font-mono text-[7px] uppercase tracking-[0.14em] [writing-mode:vertical-rl]">Open</span>
           <span className="text-[13px] leading-none transition-transform group-hover:translate-x-px">›</span>
@@ -307,12 +327,12 @@ function StudioSidebar({
 
   return (
     <aside className="flex w-[min(13rem,calc(100vw-3rem))] shrink-0 flex-col border-r border-[#181818] bg-[#0c0c0c] sm:w-52">
-      <div className="flex items-center gap-2 border-b border-[#181818] px-3 py-[10px]">
-        <div className="grid shrink-0 grid-cols-2 gap-[2px]">
-          <div className="h-[7px] w-[7px] bg-[#3a8a3a]" />
-          <div className="h-[7px] w-[7px] bg-[#2a2a2a]" />
-          <div className="h-[7px] w-[7px] bg-[#2a2a2a]" />
-          <div className="h-[7px] w-[7px] bg-[#3a8a3a]" />
+      <div className="flex items-center gap-2 border-b border-[#181818] px-3 py-2.5">
+        <div className="grid shrink-0 grid-cols-2 gap-0.5">
+          <div className="h-1.75 w-1.75 bg-[#3a8a3a]" />
+          <div className="h-1.75 w-1.75 bg-[#2a2a2a]" />
+          <div className="h-1.75 w-1.75 bg-[#2a2a2a]" />
+          <div className="h-1.75 w-1.75 bg-[#3a8a3a]" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-[13px] font-semibold tracking-wide text-[#e0e0e0]">Splitter Studio</div>
@@ -323,7 +343,7 @@ function StudioSidebar({
           onClick={onToggleCollapsed}
           title="Collapse module panel"
           aria-label="Collapse module panel"
-          className="shrink-0 rounded-[2px] border border-transparent px-1.5 py-1 text-[12px] text-[#555] transition-colors hover:border-[#333] hover:text-[color:var(--color-accent)]"
+          className="shrink-0 rounded-xs border border-transparent px-1.5 py-1 text-[12px] text-[#555] transition-colors hover:border-[#333] hover:text-(--color-accent)"
         >
           «
         </button>
@@ -340,10 +360,10 @@ function StudioSidebar({
               onClick={() => onSelectTab(module.tab)}
               disabled={module.disabled}
               aria-disabled={module.disabled}
-              className={`flex w-full items-center text-left transition-colors ${module.disabled ? 'cursor-not-allowed bg-red-500/[0.025] text-red-400/55' : isActive ? 'bg-[#131313] text-[#e0e0e0]' : 'text-[#585858] hover:bg-[#101010] hover:text-[#9a9a9a]'}`}
+              className={`flex w-full items-center text-left transition-colors ${module.disabled ? 'cursor-not-allowed bg-red-500/2.5 text-red-400/55' : isActive ? 'bg-[#131313] text-[#e0e0e0]' : 'text-[#585858] hover:bg-[#101010] hover:text-[#9a9a9a]'}`}
             >
-              <div className="mr-3 w-[2px] self-stretch" style={{ background: module.disabled ? 'rgba(248,113,113,.45)' : isActive ? '#3a8a3a' : 'transparent', minHeight: 38 }} />
-              <div className="min-w-0 flex-1 py-[7px]">
+              <div className="mr-3 w-0.5 self-stretch" style={{ background: module.disabled ? 'rgba(248,113,113,.45)' : isActive ? '#3a8a3a' : 'transparent', minHeight: 38 }} />
+              <div className="min-w-0 flex-1 py-1.75">
                 <div className="text-[12px] font-medium leading-tight">{module.label}</div>
                 <div className={`text-[10px] ${module.disabled ? 'text-red-400/35' : 'text-[#3a3a3a]'}`}>{module.sub}</div>
               </div>
@@ -354,10 +374,10 @@ function StudioSidebar({
       </div>
 
       <div className="border-t border-[#181818] p-3">
-        <a className="block rounded-[2px] border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] uppercase tracking-[0.18em] text-[#555] transition hover:border-[#3a8a3a]/50 hover:text-[#3a8a3a]" href="/docs" rel="noreferrer">
+        <a className="block rounded-xs border border-[#181818] bg-[#080808] px-2 py-2 text-[10px] uppercase tracking-[0.18em] text-[#555] transition hover:border-[#3a8a3a]/50 hover:text-[#3a8a3a]" href="/docs" rel="noreferrer">
           Swagger docs
         </a>
-        <div className="mt-3 space-y-[4px] font-mono text-[9px] leading-tight">
+        <div className="mt-3 space-y-1 font-mono text-[9px] leading-tight">
           <div><span className="text-[#3a8a3a99]">[FLOW]</span> <span className="text-[#555]">upload → detect → sheet</span></div>
           <div><span className="text-[#3a8a3a99]">[GRID]</span> <span className="text-[#444]">split before review</span></div>
           <div><span className="text-[#3a8a3a99]">[REVIEW]</span> <span className="text-[#444]">approve → project</span></div>
@@ -393,14 +413,14 @@ function WorkspaceHeader({
         : 'image approval, publishing, project creation'
 
   return (
-    <header className="flex min-h-9 shrink-0 items-center justify-between gap-3 border-b border-[#181818] bg-[#0c0c0c] px-3 py-[8px] sm:px-5">
+    <header className="flex min-h-9 shrink-0 items-center justify-between gap-3 border-b border-[#181818] bg-[#0c0c0c] px-3 py-2 sm:px-5">
       <div className="flex min-w-0 items-center gap-3">
         <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[#d0d0d0] sm:text-[12px] sm:tracking-[0.18em]">{title}</span>
         <span className="hidden border-l border-[#222] pl-3 text-[10px] uppercase tracking-[0.18em] text-[#3a8a3a] sm:inline">{status}</span>
       </div>
       <div className="flex items-center gap-4">
         <span className="hidden items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-[#3a8a3a] sm:flex">
-          <span className="h-[5px] w-[5px] rounded-[2px] bg-[#3a8a3a] dot-pulse" />
+          <span className="h-1.25 w-1.25 rounded-xs bg-[#3a8a3a] dot-pulse" />
           Main screen
         </span>
         <a className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#555] transition hover:text-[#3a8a3a]" href={reviewsHref} rel="noreferrer">
@@ -423,7 +443,7 @@ function HeroFull() {
           Every frame,
           <br />
           <span className="text-[#aaa]">on your terms</span>
-          <span className="text-[color:var(--color-accent)]">.</span>
+          <span className="text-(--color-accent)">.</span>
         </h1>
         <p className="max-w-xl text-[14px] leading-relaxed text-[#777]">
           Choose scene cuts, an exact number of evenly spaced frames, or a fixed time step.
@@ -446,9 +466,9 @@ function HeroCompact() {
   return (
     <header className="mt-5 flex flex-wrap items-baseline justify-between gap-4 border-b border-[#181818] pb-4">
       <div className="flex items-baseline gap-4">
-        <h1 className="text-[16px] font-semibold leading-none tracking-tight text-[#e0e0e0] sm:text-[16px] font-semibold">
+        <h1 className="text-[16px] font-semibold leading-none tracking-tight text-[#e0e0e0] sm:text-[16px]">
           Every frame, <span className="text-[#777]">on your terms</span>
-          <span className="text-[color:var(--color-accent)]">.</span>
+          <span className="text-(--color-accent)">.</span>
         </h1>
       </div>
       <div className="flex items-center gap-5 font-mono text-[10px] uppercase tracking-[0.24em] text-[#555]">
@@ -512,7 +532,7 @@ function ShotSequenceHeader({
   const selectedSheetLayout = sheetLayouts.find((layout) => layout.label === selectedSheetLayoutLabel) ?? sheetLayouts[1]
 
   return (
-    <div className="space-y-3 border-t border-white/[0.04] pt-4">
+    <div className="space-y-3 border-t border-white/4 pt-4">
       <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#343434]">
         <span className="text-[#555]/90">Shot sequence ready</span>
       </p>
@@ -529,7 +549,7 @@ function ShotSequenceHeader({
           </p>
         </div>
 
-        <div className="flex flex-shrink-0 flex-wrap items-center gap-x-1 gap-y-2 font-mono text-[11px] text-[#555]/90 min-[1024px]:justify-end min-[1024px]:pt-0.5 min-[1024px]:text-right">
+        <div className="flex shrink-0 flex-wrap items-center gap-x-1 gap-y-2 font-mono text-[11px] text-[#555]/90 min-[1024px]:justify-end min-[1024px]:pt-0.5 min-[1024px]:text-right">
           {exports.map((item, i) => {
             const short =
               item.label === 'Export keyframes ZIP'
@@ -556,7 +576,7 @@ function ShotSequenceHeader({
               <summary className="cursor-pointer list-none text-[#555]/90 underline decoration-white/10 decoration-dotted underline-offset-4 transition-colors hover:text-[#aaa] [&::-webkit-details-marker]:hidden">
                 sheet <span className="text-[#333] transition-transform group-open:inline-block group-open:rotate-180">⌄</span>
               </summary>
-              <div className="z-40 mt-2 w-full border border-[#242424] bg-[#0c0c0c] p-3 text-left shadow-2xl sm:absolute sm:right-0 sm:w-[19rem]">
+              <div className="z-40 mt-2 w-full border border-[#242424] bg-[#0c0c0c] p-3 text-left shadow-2xl sm:absolute sm:right-0 sm:w-76">
                 <p className="text-[9px] uppercase tracking-[0.22em] text-[#3a3a3a]">Sheet export</p>
                 <a
                   href={assetUrl(manifest.job_id, manifest.contact_sheet_path)}
@@ -571,7 +591,7 @@ function ShotSequenceHeader({
                     <p className="text-[10px] text-[#888]">Selected clips</p>
                     <p className="mt-0.5 text-[9px] text-[#444]">Evenly sampled as one timeline</p>
                   </div>
-                  <span className="shrink-0 text-[9px] text-[color:var(--color-accent)]">{selectedSegmentIndices.length} selected</span>
+                  <span className="shrink-0 text-[9px] text-(--color-accent)">{selectedSegmentIndices.length} selected</span>
                 </div>
                 <div className="mt-2 grid grid-cols-5 gap-1" role="radiogroup" aria-label="Selected sheet grid size">
                   {sheetLayouts.map((layout) => {
@@ -584,7 +604,7 @@ function ShotSequenceHeader({
                         aria-checked={isSelected}
                         aria-label={`${layout.label} grid`}
                         onClick={() => setSelectedSheetLayoutLabel(layout.label)}
-                        className={`flex h-8 items-center justify-center border text-[9px] transition-colors ${isSelected ? 'border-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent)]' : 'border-[#242424] text-[#555] hover:border-[#444] hover:text-[#999]'}`}
+                        className={`flex h-8 items-center justify-center border text-[9px] transition-colors ${isSelected ? 'border-(--color-accent) bg-accent-soft text-(--color-accent)' : 'border-[#242424] text-[#555] hover:border-[#444] hover:text-[#999]'}`}
                       >
                         {layout.label}
                       </button>
@@ -602,7 +622,7 @@ function ShotSequenceHeader({
                       )}
                       download
                       title={`Export ${selectedSheetLayout.label} sheet from selected clips`}
-                      className="flex h-8 items-center justify-between border border-[color:var(--color-accent-line)] bg-[color:var(--color-accent-soft)] px-2.5 text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-accent)] transition-colors hover:border-[color:var(--color-accent)]"
+                      className="flex h-8 items-center justify-between border border-accent-line bg-accent-soft px-2.5 text-[9px] uppercase tracking-[0.14em] text-(--color-accent) transition-colors hover:border-(--color-accent)"
                     >
                       <span>Export selected sheet</span>
                       <span className="text-[8px] opacity-70">{selectedSheetLayout.rows * selectedSheetLayout.columns} frames</span>
@@ -642,11 +662,11 @@ function EmptyShotSequence() {
             <span className="h-px w-6 bg-zinc-700" />
             <span>Workflow</span>
           </div>
-          <h2 className="text-[16px] font-semibold tracking-tight text-[#e0e0e0] sm:text-[16px] font-semibold">
+          <h2 className="text-[16px] font-semibold tracking-tight text-[#e0e0e0] sm:text-[16px]">
             Three steps. <span className="text-[#555]">No more.</span>
           </h2>
         </div>
-        <ol className="grid gap-px bg-white/[0.06] sm:grid-cols-3">
+        <ol className="grid gap-px bg-white/6 sm:grid-cols-3">
           <Step index="01" title="Drop" body="Upload a local video file. Stored in its own job folder." />
           <Step index="02" title="Sample" body="Choose scene cuts, an exact frame count, or a fixed time step." />
           <Step index="03" title="Review" body="Scrub clips, grab thumbnails, export ZIPs." />
@@ -658,7 +678,7 @@ function EmptyShotSequence() {
 
 function Step({ index, title, body }: { index: string; title: string; body: string }) {
   return (
-    <li className="space-y-2 bg-[#0a0a0b] p-5">
+    <li className="space-y-2 bg-ink-50 p-5">
       <div className="flex items-baseline justify-between">
         <span className="font-mono text-[11px] tracking-[0.2em] text-[#343434]">{index}</span>
         <Film className="h-3.5 w-3.5 text-[#222]" />

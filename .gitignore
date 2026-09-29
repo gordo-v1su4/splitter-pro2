@@ -15,3 +15,9 @@ data/image_splits/
 data/reviews/
 data/review-smoke/
 data/*.log
+data/private/
+cookies.txt
+*.cookies.txt
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

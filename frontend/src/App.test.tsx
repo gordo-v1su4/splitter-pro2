@@ -264,7 +264,7 @@ describe('App', () => {
     render(<UploadPanel isUploading={false} onUpload={vi.fn()} job={null} onReset={vi.fn()} />)
 
     const detailRail = screen.getByTestId('split-mode-detail')
-    expect(detailRail).toHaveClass('h-[68px]')
+    expect(detailRail).toHaveClass('h-17')
     await user.click(screen.getByRole('radio', { name: /equal count/i }))
     expect(screen.getByTestId('split-mode-detail')).toBe(detailRail)
     await user.click(screen.getByRole('radio', { name: /time step/i }))

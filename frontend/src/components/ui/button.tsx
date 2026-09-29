@@ -6,17 +6,17 @@ import { cn } from '../../lib/utils'
 
 const buttonVariants = cva(
   [
-    'inline-flex items-center justify-center gap-1 rounded-[2px] border font-mono font-normal uppercase tracking-[0.16em]',
+    'inline-flex items-center justify-center gap-1 rounded-xs border font-mono font-normal uppercase tracking-[0.16em]',
     'transition-colors duration-150 outline-none',
-    'focus-visible:ring-1 focus-visible:ring-[color:var(--color-accent)] focus-visible:ring-offset-1 focus-visible:ring-offset-[#0a0a0b]',
+    'focus-visible:ring-1 focus-visible:ring-(--color-accent) focus-visible:ring-offset-1 focus-visible:ring-offset-ink-50',
     'disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-[#2a2a2a] disabled:bg-[#2a2a2a] disabled:text-[#6a6a6a] disabled:opacity-100',
   ].join(' '),
   {
     variants: {
       variant: {
         primary: [
-          'border-[color:var(--color-accent-line)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent)]',
-          'hover:border-[color:var(--color-accent)] hover:bg-[rgba(115,173,104,0.18)] active:bg-[rgba(115,173,104,0.24)]',
+          'border-accent-line bg-accent-soft text-(--color-accent)',
+          'hover:border-(--color-accent) hover:bg-[rgba(115,173,104,0.18)] active:bg-[rgba(115,173,104,0.24)]',
         ].join(' '),
         secondary: [
           'border-[#2a2a2a] bg-transparent text-[#666]',
@@ -27,8 +27,8 @@ const buttonVariants = cva(
           'hover:border-[#2a2a2a] hover:bg-white/[0.03] hover:text-[#aaa]',
         ].join(' '),
         outline: [
-          'border-[color:var(--color-accent-line)] bg-transparent text-[color:var(--color-accent)]',
-          'hover:border-[color:var(--color-accent)] hover:bg-[color:var(--color-accent-soft)]',
+          'border-accent-line bg-transparent text-(--color-accent)',
+          'hover:border-(--color-accent) hover:bg-accent-soft',
         ].join(' '),
       },
       size: {

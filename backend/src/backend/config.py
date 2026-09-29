@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,6 +28,16 @@ class Settings(BaseSettings):
     review_storage_bucket: str = "splitter"
     review_storage_prefix: str = "reviews"
     app_access_pin: str = ""
+    youtube_cookies_file: Path | None = None
+    youtube_max_bytes: int = Field(default=1024 * 1024 * 1024, ge=1024 * 1024)
+    youtube_max_duration_seconds: int = Field(default=3600, ge=1)
+    youtube_timeout_seconds: int = Field(default=900, ge=1)
+
+    @field_validator("youtube_cookies_file", mode="before")
+    @classmethod
+    def empty_cookie_path(cls, value):
+        return None if value == "" else value
+
     allowed_origins: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:5173",

@@ -64,6 +64,10 @@ export interface JobState {
   segment_count: number
   progress_completed: number
   progress_total: number
+  source_url?: string | null
+  source_ready?: boolean
+  downloaded_bytes?: number
+  download_total_bytes?: number | null
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
@@ -111,6 +115,38 @@ export async function fetchJobResult(jobId: string): Promise<JobManifest> {
 
 export function assetUrl(jobId: string, assetPath: string): string {
   return `/api/jobs/${jobId}/assets/${assetPath}`
+}
+
+export type YouTubeClipRange = {
+  clipStartSeconds?: number | null
+  clipEndSeconds?: number | null
+}
+
+export async function submitYouTube(
+  url: string,
+  options: VideoSplitOptions,
+  useCookies: boolean,
+  clip?: YouTubeClipRange,
+): Promise<JobState> {
+  const body: Record<string, unknown> = {
+    url,
+    split_mode: options.splitMode,
+    target_count: options.targetCount,
+    interval_seconds: options.intervalSeconds,
+    use_cookies: useCookies,
+  }
+  if (clip?.clipStartSeconds != null && Number.isFinite(clip.clipStartSeconds)) {
+    body.clip_start_seconds = clip.clipStartSeconds
+  }
+  if (clip?.clipEndSeconds != null && Number.isFinite(clip.clipEndSeconds)) {
+    body.clip_end_seconds = clip.clipEndSeconds
+  }
+  const response = await fetch('/api/jobs/youtube', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return (await parseResponse<{ job: JobState }>(response)).job
 }
 
 export function customContactSheetUrl(

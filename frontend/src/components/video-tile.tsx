@@ -148,7 +148,7 @@ export function VideoTile({ src, poster, ariaLabel, overlay, className, playStyl
 
         <span
           className={cn(
-            'pointer-events-none absolute left-1/2 top-1/2 z-[3] flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[2px]',
+            'pointer-events-none absolute left-1/2 top-1/2 z-[3] flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xs',
             'transition-all duration-200',
             subtle
               ? [
@@ -178,7 +178,7 @@ export function VideoTile({ src, poster, ariaLabel, overlay, className, playStyl
           type="button"
           onClick={togglePlay}
           aria-label={ariaLabel ?? (isPlaying ? 'Pause' : 'Play')}
-          className="absolute inset-0 z-[4] cursor-pointer border-0 bg-transparent outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--color-accent)]"
+          className="absolute inset-0 z-[4] cursor-pointer border-0 bg-transparent outline-none focus-visible:ring-1 focus-visible:ring-(--color-accent)"
         />
 
         <button
@@ -200,7 +200,7 @@ export function VideoTile({ src, poster, ariaLabel, overlay, className, playStyl
 
       <div
         onClick={handleScrub}
-        className="relative h-[3px] cursor-pointer bg-white/[0.06]"
+        className="relative h-[3px] cursor-pointer bg-white/6"
         role="slider"
         aria-label="Seek"
         aria-valuenow={Math.round(progress)}
