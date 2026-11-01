@@ -1,0 +1,11 @@
+[Unit]
+Description=Deploy changed Splitter Trigger tasks from main
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=gordo
+ExecStart=/bin/bash /home/gordo/splitter-trigger-sync.sh
+TimeoutStartSec=20min
+Environment=HOME=/home/gordo

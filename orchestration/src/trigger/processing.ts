@@ -36,7 +36,7 @@ export const processVideo = task({
     validate(payload)
     metadata.set('stage', 'processing-video').set('progressMode', 'indeterminate').set('jobId', payload.jobId)
     const { app, token } = settings()
-    // Start once; polling lets Trigger checkpoint instead of holding a long HTTP call.
+    // Start once; short polls avoid holding a long HTTP request to Hostinger.
     await request(`${app}/internal/orchestration/videos/${payload.jobId}/start`, token, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ dispatch_id: payload.dispatchId, run_id: ctx.run.id }),
