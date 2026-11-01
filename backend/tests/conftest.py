@@ -22,6 +22,8 @@ def temp_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv("SPLITTER_DATA_DIR", str(data_dir))
     monkeypatch.setenv("SPLITTER_IMAGE_SPLITS_DIR", str(image_splits))
     monkeypatch.setenv("SPLITTER_REVIEWS_DIR", str(reviews))
+    monkeypatch.setenv("SPLITTER_BACKGROUND_JOBS_DIR", str(tmp_path / 'background_jobs'))
+    monkeypatch.setenv("SPLITTER_TRIGGER_SECRET_KEY", '')
     monkeypatch.setenv("SPLITTER_FRONTEND_DIST_DIR", str(frontend_dist))
     monkeypatch.setenv("SPLITTER_SCENE_THRESHOLD", "12.0")
     get_settings.cache_clear()

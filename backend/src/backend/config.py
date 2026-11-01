@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     review_storage_bucket: str = "splitter"
     review_storage_prefix: str = "reviews"
     app_access_pin: str = ""
+    trigger_api_url: str = "https://trigger.v1su4.dev"
+    trigger_secret_key: str = ""
+    orchestration_token: str = ""
+    allow_cpu_background: bool = True
+    background_jobs_dir: Path = Field(default_factory=lambda: REPO_ROOT / "data" / "background_jobs")
     youtube_cookies_file: Path | None = None
     youtube_max_bytes: int = Field(default=1024 * 1024 * 1024, ge=1024 * 1024)
     youtube_max_duration_seconds: int = Field(default=3600, ge=1)

@@ -47,11 +47,19 @@ browser. The bank holds up to 100 images, 100 MB each.
 Each shot has **Remove background**, which uploads that shot to the app server
 and adds a new opaque PNG to the bank without replacing the original or its
 board position. Choose any grayscale background using the black-to-white slider,
-or the Black / 50% gray / White presets. BiRefNet General Lite runs locally on
-the server through rembg/ONNX CPU; no Comfy service or external image API is
-required. Inputs are limited to 32 megapixels for removal. The model is baked
-into the Docker image; development caches it under `data/models` on first use.
-Images and results are processed in memory and are not saved on the server.
+or the Black / 50% gray / White presets. **Subject to keep** tells SAM 3 what to
+preserve (include accessories such as a backpack when needed). Production jobs
+run through the dedicated Splitter Trigger project and the private app-vm GPU
+worker. Each inference process exits to release VRAM. SAM's predicted mask is
+used without added blur, feathering, erosion, or stretching. Inputs are limited
+to 32 megapixels. Original and processed job files remain in app-owned job
+storage so retries and output download can recover from an interrupted request.
+Local development without Trigger uses BiRefNet General Lite on the CPU;
+production disables that fallback to protect Hostinger's RAM.
+
+Video scene detection and exports use the separate `splitter-process-video`
+Trigger task when configured. Image-grid splitting remains CPU-only. See
+[`docs/processing-orchestration.md`](docs/processing-orchestration.md).
 
 **Split grids** is the separate tool for cutting existing grid images into panels.
 

@@ -14,9 +14,6 @@ COPY backend /app/backend
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 WORKDIR /app/backend
 RUN uv sync --frozen --no-dev
-ENV REMBG_HOME="/opt/rembg"
-# Bake the checksum-verified model into the image; uploads never wait for a download.
-RUN uv run --frozen python -c "from backend.backgrounds import model_session; model_session()"
 ENV PATH="/app/backend/.venv/bin:${PATH}"
 EXPOSE 8000
 CMD ["uv", "run", "uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -12,6 +12,9 @@ services:
       - "8000:8000"
     environment:
       SPLITTER_APP_ACCESS_PIN: ${SPLITTER_APP_ACCESS_PIN:-}
+      SPLITTER_TRIGGER_SECRET_KEY: ${SPLITTER_TRIGGER_SECRET_KEY:-}
+      SPLITTER_ORCHESTRATION_TOKEN: ${SPLITTER_ORCHESTRATION_TOKEN:-}
+      SPLITTER_ALLOW_CPU_BACKGROUND: 'false'
       SPLITTER_ALLOWED_ORIGINS: '["https://splitter.serving.cloud","http://splitter.serving.cloud","http://localhost:8000","http://127.0.0.1:8000","http://localhost:5173","http://127.0.0.1:5173"]'
       SPLITTER_MEDIA_API_URL: ${SPLITTER_MEDIA_API_URL:-https://media.v1su4.dev}
       SPLITTER_YOUTUBE_COOKIES_FILE: ${SPLITTER_YOUTUBE_COOKIES_FILE:-}

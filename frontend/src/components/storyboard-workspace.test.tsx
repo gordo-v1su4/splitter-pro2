@@ -19,7 +19,8 @@ async function upload(names = ['first.png', 'second.png']) {
 
 describe('storyboard workspace', () => {
   it('adds an opaque background-removal copy without replacing the original or its placement', async () => {
-    const request = vi.fn().mockResolvedValue({ ok: true, blob: async () => new Blob(['png'], { type: 'image/png' }) })
+    const request = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ job_id: 'test-job', status: 'completed' }) })
+      .mockResolvedValueOnce({ ok: true, blob: async () => new Blob(['png'], { type: 'image/png' }) })
     vi.stubGlobal('fetch', request)
     render(<StoryboardWorkspace />)
     await upload(['original.png'])

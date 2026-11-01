@@ -18,6 +18,8 @@
 .sb-background-swatch { width: 16px; height: 16px; border: 1px solid #666; }
 .sb-background .sb-presets { justify-self: start; }
 .sb-background small { color: #777; line-height: 1.5; }
+.sb-subject { display: grid; gap: 6px; }
+.sb-subject input { width: 100%; min-width: 0; height: 28px; padding: 0 7px; color: #bbb; background: #101010; border: 1px solid #333; font-size: 10px; }
 .sb-remove-background { width: 100%; padding: 0 3px; font-size: 9px; }
 .sb-shot-grid { display: grid; flex: 1; min-height: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 9px; align-content: start; overflow-y: auto; padding: 2px; }
 .sb-shot { position: relative; min-width: 0; }

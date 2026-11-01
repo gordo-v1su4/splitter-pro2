@@ -3,11 +3,11 @@ from __future__ import annotations
 import hashlib
 import shutil
 
-from fastapi import BackgroundTasks, Body, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import BackgroundTasks, Body, Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
-from . import backgrounds, image_split, projects, reviews
+from . import background_jobs, backgrounds, image_split, orchestration, projects, reviews
 from .access_gate import (
     ACCESS_COOKIE_NAME,
     ACCESS_SESSION_TTL_SECONDS,
@@ -114,6 +114,8 @@ def create_app() -> FastAPI:
 
     @app.post("/api/storyboard/remove-background", tags=["Image split"])
     def remove_shot_background(file: UploadFile = File(...), gray: int = Form(255, ge=0, le=255)):
+        if not settings.allow_cpu_background:
+            raise HTTPException(409, "Use the queued background processing endpoint.")
         source = file.file.read(backgrounds.MAX_BYTES + 1)
         if len(source) > backgrounds.MAX_BYTES:
             raise HTTPException(413, "Use an image up to 100 MB.")
@@ -126,6 +128,53 @@ def create_app() -> FastAPI:
             logging.getLogger(__name__).exception("Background removal failed")
             raise HTTPException(503, "Background removal is unavailable. Please try again.") from exc
         return Response(result, media_type="image/png", headers={"Cache-Control": "no-store"})
+
+    @app.post('/api/storyboard/background-jobs', status_code=202)
+    def create_background_job(background_tasks: BackgroundTasks, file: UploadFile = File(...), gray: int = Form(255, ge=0, le=255), prompt: str = Form('person', min_length=1, max_length=160)):
+        state = background_jobs.create(file.file.read(backgrounds.MAX_BYTES + 1), gray, prompt)
+        if not settings.trigger_secret_key:
+            background_tasks.add_task(background_jobs.process_local, state['job_id'])
+        return state
+
+    @app.get('/api/storyboard/background-jobs/{job_id}')
+    def get_background_job(job_id: str):
+        return background_jobs.public(job_id)
+
+    @app.get('/api/storyboard/background-jobs/{job_id}/output')
+    def get_background_output(job_id: str):
+        if background_jobs.read(job_id)['status'] != 'completed':
+            raise HTTPException(409, 'Background output is not ready')
+        return FileResponse(background_jobs.root(job_id) / 'output.png', media_type='image/png', headers={'Cache-Control': 'no-store'})
+
+    @app.patch('/internal/orchestration/backgrounds/{job_id}', dependencies=[Depends(orchestration.authorize)])
+    def update_background_job(job_id: str, payload: dict = Body(...)):
+        return background_jobs.update(job_id, payload.get('dispatch_id', ''), payload.get('run_id', ''), payload)
+
+    @app.get('/internal/orchestration/backgrounds/{job_id}/source', dependencies=[Depends(orchestration.authorize)])
+    def background_source(job_id: str, request: Request):
+        import hmac
+        from urllib.parse import quote
+        state = background_jobs.read(job_id)
+        if not hmac.compare_digest(request.headers.get('x-splitter-dispatch', ''), state['dispatch_id']):
+            raise HTTPException(409, 'Stale processing request')
+        return FileResponse(background_jobs.root(job_id) / 'source', media_type='application/octet-stream', headers={
+            'X-Splitter-Gray': str(state['gray']), 'X-Splitter-Prompt': quote(state['prompt']), 'Cache-Control': 'no-store'})
+
+    @app.post('/internal/orchestration/backgrounds/{job_id}/complete', dependencies=[Depends(orchestration.authorize)])
+    def complete_background_job(job_id: str, file: UploadFile = File(...), dispatch_id: str = Form(...), run_id: str = Form(...)):
+        data = file.file.read(backgrounds.MAX_BYTES + 1)
+        if len(data) > backgrounds.MAX_BYTES:
+            raise HTTPException(413, 'Processed image exceeds the size limit')
+        return background_jobs.complete(job_id, dispatch_id, run_id, data)
+
+    @app.post('/internal/orchestration/videos/{job_id}/start', dependencies=[Depends(orchestration.authorize)])
+    def start_video_processing(job_id: str, background_tasks: BackgroundTasks, payload: dict = Body(...)):
+        from .video_dispatch import start
+        return start(job_id, payload, background_tasks)
+
+    @app.get('/internal/orchestration/videos/{job_id}', dependencies=[Depends(orchestration.authorize)])
+    def video_processing_status(job_id: str):
+        return read_state(job_id)
 
     @app.get("/api/health", tags=["Health"])
     def healthcheck() -> dict[str, str]:
@@ -199,7 +248,11 @@ def create_app() -> FastAPI:
         with paths.source_file.open("wb") as handle:
             shutil.copyfileobj(file.file, handle)
         await file.close()
-        background_tasks.add_task(process_job, paths.job_id)
+        if settings.trigger_secret_key:
+            from .video_dispatch import dispatch_video
+            dispatch_video(paths.job_id)
+        else:
+            background_tasks.add_task(process_job, paths.job_id)
         return JobCreatedResponse(job=read_state(paths.job_id))
 
     @app.post("/api/jobs/youtube", response_model=JobCreatedResponse, status_code=202, tags=["Video jobs"])
@@ -207,7 +260,11 @@ def create_app() -> FastAPI:
         payload: YouTubeJobRequest, background_tasks: BackgroundTasks,
     ) -> JobCreatedResponse:
         job = create_youtube_job(payload)
-        background_tasks.add_task(download_and_process, job.job_id, payload.use_cookies)
+        if settings.trigger_secret_key:
+            from .video_dispatch import dispatch_video
+            dispatch_video(job.job_id, youtube=True, use_cookies=payload.use_cookies)
+        else:
+            background_tasks.add_task(download_and_process, job.job_id, payload.use_cookies)
         return JobCreatedResponse(job=job)
 
     @app.get(

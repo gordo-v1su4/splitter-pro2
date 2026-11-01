@@ -1,0 +1,29 @@
+services:
+  background-worker:
+    image: splitter-background-worker:sam3-v1
+    pull_policy: never
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ports:
+      - '100.118.78.13:18097:8000'
+    environment:
+      WORKER_TOKEN: ${WORKER_TOKEN:?required}
+    volumes:
+      - /opt/splitter-background-worker/models:/models:ro
+      - splitter-background-jobs:/work
+      - /var/lock/stack-structure-gpu:/gpu-lock
+    mem_limit: 20g
+    cpus: 4
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+volumes:
+  splitter-background-jobs:

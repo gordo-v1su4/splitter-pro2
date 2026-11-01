@@ -1,0 +1,17 @@
+{
+  "name": "splitter-orchestration",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "trigger.dev deploy --api-url https://trigger.v1su4.dev --local-build --skip-update-check",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@trigger.dev/sdk": "4.8.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "trigger.dev": "4.8.1",
+    "typescript": "~5.9.3"
+  }
+}

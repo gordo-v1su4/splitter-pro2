@@ -1,0 +1,5 @@
+models/
+qa*/
+.env
+*.log
+__pycache__/

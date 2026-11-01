@@ -35,6 +35,7 @@ export function StoryboardWorkspace() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [backgroundGray, setBackgroundGray] = useState(255)
+  const [backgroundSubject, setBackgroundSubject] = useState('person with clothing and accessories')
   const [removingId, setRemovingId] = useState<string | null>(null)
   const backgroundLock = useRef(false)
   const urls = useRef(new Set<string>())
@@ -121,12 +122,27 @@ export function StoryboardWorkspace() {
       const form = new FormData()
       form.append('file', image.file)
       form.append('gray', String(gray))
-      const response = await fetch('/api/storyboard/remove-background', { method: 'POST', body: form })
+      form.append('prompt', backgroundSubject.trim() || 'person')
+      const response = await fetch('/api/storyboard/background-jobs', { method: 'POST', body: form })
       if (!response.ok) {
         const problem = await response.json().catch(() => null)
         throw new Error(typeof problem?.detail === 'string' ? problem.detail : 'Unable to remove background. Please try again.')
       }
-      const blob = await response.blob()
+      let job = await response.json()
+      const jobId = job.job_id
+      const labels: Record<string, string> = { queued: 'Queued', 'preparing-image': 'Preparing image', 'waiting-for-gpu': 'Waiting for GPU', 'loading-sam3': 'Loading SAM 3', 'removing-background': 'Removing background' }
+      while (job.status !== 'completed') {
+        if (job.status === 'failed') throw new Error(job.error || 'Unable to remove background. Please retry.')
+        if (!mounted.current) return
+        setNotice(`${labels[job.stage] ?? 'Processing'}: ${image.name}…`)
+        await new Promise((resolve) => window.setTimeout(resolve, 1500))
+        const status = await fetch(`/api/storyboard/background-jobs/${jobId}`)
+        if (!status.ok) throw new Error('Unable to check processing status. Please retry.')
+        job = await status.json()
+      }
+      const output = await fetch(`/api/storyboard/background-jobs/${jobId}/output`)
+      if (!output.ok) throw new Error('Unable to download the processed shot. Please retry.')
+      const blob = await output.blob()
       const bitmap = await createImageBitmap(blob)
       const dimensions = { width: bitmap.width, height: bitmap.height }
       bitmap.close()
@@ -249,6 +265,8 @@ export function StoryboardWorkspace() {
               <button type="button" key={shade.value} aria-pressed={backgroundGray === shade.value} onClick={() => setBackgroundGray(shade.value)}>{shade.label}</button>)}
           </div>
           <small>Remove a shot’s background to create an opaque copy.</small>
+          <label className="sb-subject">Subject to keep<input value={backgroundSubject} maxLength={160}
+            onChange={(event) => setBackgroundSubject(event.target.value)} placeholder="e.g. person wearing a backpack" /></label>
         </div>
         <div className="sb-shot-grid">
           {images.map((image) => (
