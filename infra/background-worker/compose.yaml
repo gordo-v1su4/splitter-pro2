@@ -1,6 +1,6 @@
 services:
   background-worker:
-    image: splitter-background-worker:sam3-v1
+    image: splitter-background-worker:birefnet-hr-v1
     pull_policy: never
     restart: unless-stopped
     deploy:

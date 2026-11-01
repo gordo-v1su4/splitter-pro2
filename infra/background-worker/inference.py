@@ -23,33 +23,35 @@ def run(directory):
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     with lock_path.open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        status(root / 'status.json', 'loading-sam3')
+        status(root / 'status.json', 'loading-birefnet')
         import torch
-        from sam3.model_builder import build_sam3_image_model
-        from sam3.model.sam3_image_processor import Sam3Processor
+        from torchvision import transforms
+        from transformers import AutoModelForImageSegmentation
 
         if not torch.cuda.is_available():
             raise RuntimeError('CUDA GPU is unavailable')
         started = time.monotonic()
-        model = build_sam3_image_model(checkpoint_path=os.environ['SAM3_CHECKPOINT'], load_from_HF=False, device='cuda', enable_inst_interactivity=False)
-        processor = Sam3Processor(model, device='cuda', confidence_threshold=0.3)
+        model = AutoModelForImageSegmentation.from_pretrained(
+            os.environ.get('BIREFNET_MODEL', '/models/birefnet-hr-matting'),
+            trust_remote_code=True, local_files_only=True,
+        ).eval().cuda().half()
         with Image.open(root / 'source') as source:
             image = ImageOps.exif_transpose(source).convert('RGB')
         status(root / 'status.json', 'removing-background')
-        with torch.inference_mode(), torch.autocast('cuda', dtype=torch.bfloat16):
-            state = processor.set_image(image)
-            result = processor.set_text_prompt(state=state, prompt=request.get('prompt', 'person'))
-        masks = result.get('masks')
-        if masks is None or masks.numel() == 0:
-            raise RuntimeError('SAM 3 did not find a foreground subject. Try a different subject description.')
-        # Preserve SAM's predicted boundary. No feathering, blur, erosion, or dilation.
-        mask = masks.squeeze(1).any(dim=0).cpu().numpy().astype('uint8') * 255
-        mask = Image.fromarray(mask).resize(image.size, Image.Resampling.NEAREST)
+        transform = transforms.Compose([
+            transforms.Resize((2048, 2048)), transforms.ToTensor(),
+            transforms.Normalize([.485, .456, .406], [.229, .224, .225]),
+        ])
+        with torch.inference_mode():
+            prediction = model(transform(image).unsqueeze(0).cuda().half())[-1].sigmoid().cpu()[0].squeeze()
+        # Use the model's detailed alpha, without thresholding or added feathering.
+        # Only the inference tensor is resized; source pixels keep their native geometry.
+        mask = transforms.ToPILImage()(prediction).resize(image.size, Image.Resampling.LANCZOS)
         gray = request['gray']
         output = Image.new('RGB', image.size, (gray, gray, gray))
         output.paste(image, (0, 0), mask)
         output.save(root / 'output.png', format='PNG')
-        (root / 'metrics.json').write_text(json.dumps({'model': 'sam3', 'seconds': round(time.monotonic() - started, 3), 'peak_vram_bytes': torch.cuda.max_memory_allocated(), 'size': image.size}))
+        (root / 'metrics.json').write_text(json.dumps({'model': 'birefnet-hr-matting', 'seconds': round(time.monotonic() - started, 3), 'peak_vram_bytes': torch.cuda.max_memory_allocated(), 'size': image.size}))
     # Parent marks completed only after this process has exited and released CUDA.
 
 

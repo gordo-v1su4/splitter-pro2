@@ -75,9 +75,9 @@ export const removeBackground = task({
     await request(`${worker}/jobs/${payload.jobId}`, token, { method: 'POST', body: form })
     for (let attempt = 0; attempt < 2400; attempt++) {
       const result = await request(`${worker}/jobs/${payload.jobId}`, token).then(r => r.json())
-      metadata.set('stage', result.stage).set('progressMode', 'indeterminate').set('jobId', payload.jobId).set('model', 'sam3')
+      metadata.set('stage', result.stage).set('progressMode', 'indeterminate').set('jobId', payload.jobId).set('model', result.model ?? 'birefnet-hr-matting')
       await update(payload, ctx.run.id, { status: 'processing', stage: result.stage })
-      if (result.status === 'failed') throw new Error('SAM 3 processing failed')
+      if (result.status === 'failed') throw new Error('Background removal failed')
       if (result.status === 'completed') {
         const output = await request(`${worker}/jobs/${payload.jobId}/output`, token).then(r => r.blob())
         const completed = new FormData()
@@ -86,7 +86,7 @@ export const removeBackground = task({
         completed.set('run_id', ctx.run.id)
         await request(`${app}/internal/orchestration/backgrounds/${payload.jobId}/complete`, token, { method: 'POST', body: completed })
         metadata.set('stage', 'completed')
-        return { jobId: payload.jobId, status: 'completed', model: 'sam3' }
+        return { jobId: payload.jobId, status: 'completed', model: result.model ?? 'birefnet-hr-matting' }
       }
       await wait.for({ seconds: 3 })
     }

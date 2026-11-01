@@ -45,10 +45,10 @@ def execute(root):
         with (root / 'inference.log').open('wb') as log:
             process = subprocess.run([sys.executable, str(Path(__file__).with_name('inference.py')), str(root)], stdout=log, stderr=log, timeout=3600)
         if process.returncode or not (root / 'output.png').is_file():
-            raise RuntimeError('SAM 3 could not process this shot. The original is unchanged.')
-        write(root / 'status.json', {'status': 'completed', 'stage': 'completed', 'model': 'sam3'})
+            raise RuntimeError('Background removal could not process this shot. The original is unchanged.')
+        write(root / 'status.json', {'status': 'completed', 'stage': 'completed', 'model': 'birefnet-hr-matting'})
     except Exception:
-        write(root / 'status.json', {'status': 'failed', 'stage': 'failed', 'error': 'SAM 3 could not process this shot. The original is unchanged.'})
+        write(root / 'status.json', {'status': 'failed', 'stage': 'failed', 'error': 'Background removal could not process this shot. The original is unchanged.'})
 
 
 @asynccontextmanager
@@ -68,7 +68,7 @@ app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)
 
 @app.get('/health')
 def health():
-    return {'status': 'ok', 'model': 'sam3', 'gpu_lifecycle': 'per-job-process'}
+    return {'status': 'ok', 'model': 'birefnet-hr-matting', 'gpu_lifecycle': 'per-job-process'}
 
 
 @app.post('/jobs/{job_id}', dependencies=[Depends(authorize)])

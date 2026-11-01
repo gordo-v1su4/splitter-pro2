@@ -47,11 +47,11 @@ browser. The bank holds up to 100 images, 100 MB each.
 Each shot has **Remove background**, which uploads that shot to the app server
 and adds a new opaque PNG to the bank without replacing the original or its
 board position. Choose any grayscale background using the black-to-white slider,
-or the Black / 50% gray / White presets. **Subject to keep** tells SAM 3 what to
-preserve (include accessories such as a backpack when needed). Production jobs
+or the Black / 50% gray / White presets. Production uses **BiRefNet HR-matting**
+at 2048px inference resolution to preserve fine hair detail. Production jobs
 run through the dedicated Splitter Trigger project and the private app-vm GPU
-worker. Each inference process exits to release VRAM. SAM's predicted mask is
-used without added blur, feathering, erosion, or stretching. Inputs are limited
+worker. Each inference process exits to release VRAM. The predicted alpha matte is
+used without thresholding, added blur, feathering, erosion, or stretching. Inputs are limited
 to 32 megapixels. Original and processed job files remain in app-owned job
 storage so retries and output download can recover from an interrupted request.
 Local development without Trigger uses BiRefNet General Lite on the CPU;

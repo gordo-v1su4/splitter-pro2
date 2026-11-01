@@ -52,7 +52,7 @@ def create(source: bytes, gray: int, prompt: str):
     (path / 'source').write_bytes(source)
     state = {'job_id': job_id, 'dispatch_id': orchestration.new_dispatch(), 'run_id': None,
              'status': 'queued', 'stage': 'queued', 'error': None, 'gray': gray, 'prompt': prompt,
-             'model': 'sam3' if settings.trigger_secret_key else 'birefnet-general-lite', 'size': list(dimensions)}
+             'model': 'birefnet-hr-matting' if settings.trigger_secret_key else 'birefnet-general-lite', 'size': list(dimensions)}
     _atomic_write_json(path / 'status.json', state)
     if settings.trigger_secret_key:
         try:

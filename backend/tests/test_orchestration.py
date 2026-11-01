@@ -34,7 +34,7 @@ def test_gpu_dispatch_callbacks_and_idempotent_completion(client, monkeypatch):
     job_id = create(client)
     internal = background_jobs.read(job_id)
     assert calls == [('splitter-remove-background', job_id, internal['dispatch_id'])]
-    assert internal['model'] == 'sam3'
+    assert internal['model'] == 'birefnet-hr-matting'
     public = client.get(f'/api/storyboard/background-jobs/{job_id}').json()
     assert 'dispatch_id' not in public
     base = f'/internal/orchestration/backgrounds/{job_id}'

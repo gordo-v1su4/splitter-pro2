@@ -20,7 +20,16 @@ set +a
 printf '%s' "$DOCKER_REGISTRY_PASSWORD" | docker login localhost:5000 --username "$DOCKER_REGISTRY_USERNAME" --password-stdin
 cd orchestration
 bun install --frozen-lockfile
-CI=1 bun node_modules/trigger.dev/dist/esm/index.js deploy --api-url https://trigger.v1su4.dev --local-build --push --skip-update-check --external-id "$tree"
+build_log=$(mktemp)
+trap 'rm -f "$build_log"' EXIT
+# The self-hosted registry uses existing operator credentials, not cloud-issued
+# registry credentials. Build/load locally, then push the exact version's image.
+CI=1 bun node_modules/trigger.dev/dist/esm/index.js deploy --api-url https://trigger.v1su4.dev --local-build --no-push --skip-update-check | tee "$build_log"
+version=$(grep -oE 'Successfully deployed version [0-9.]+' "$build_log" | awk '{print $4}' | tail -1)
+test -n "$version"
+mapfile -t images < <(docker image ls localhost:5000/trigger/proj_slopwoltlvvujwgohfta --format '{{.Repository}}:{{.Tag}}' | grep -F ":$version.production.")
+test "${#images[@]}" -eq 1
+docker push "${images[0]}"
 printf '%s\n' "$tree" > "$stamp.tmp"
 mv "$stamp.tmp" "$stamp"
 echo "Splitter Trigger tasks deployed from tree $tree"

@@ -41,6 +41,7 @@ describe('storyboard workspace', () => {
     await upload(['original.png'])
     fireEvent.click(screen.getByRole('button', { name: 'Remove background from original.png' }))
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Model unavailable'))
+    expect(screen.queryByText(/Removing background from/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Remove background from original.png' })).toBeEnabled()
     expect(screen.getAllByRole('button', { name: /^Select / })).toHaveLength(1)
   })
