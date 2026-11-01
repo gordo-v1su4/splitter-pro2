@@ -30,12 +30,22 @@ checkpoint preserved visibly more flyaway hair than SAM 3 and sharper detail
 than the local RMBG 2.0 comparison. Measured inference including load: HR-matting
 4.07s / 5,373,649,920 bytes peak VRAM; RMBG 2.0 3.59s / 3,364,545,536 bytes.
 Both exited to the 203 MiB idle GPU baseline. No blur or mask threshold was added.
-Production replacement verification is recorded after deployment below.
+Production replacement passed on release `974d229`, Actions run `41268917198`.
+White-copy job `fde4d6735ced49bcb738ef79d59a905e` correlated with completed run
+`run_cmvx9nbwm00383foe098cv0a4`; gray-copy job `954e926ac0444380a292d09c01471e03`
+correlated with `run_cmvx9o3v3003c3foevemg56cp`. Both used task version
+`20261101.6`. Worker metrics identified `birefnet-hr-matting`, native 1672x941
+RGB output, inference 3.908s / 2.307s, and peak VRAM 5,372,732,416 bytes.
+The actual production white output matched the tested HR-matting result exactly
+in every RGB pixel. GPU returned to 203 MiB / 0%. Native app exported the
+filled original/white/gray Strip layout at 3840x2160 with opaque alpha.
 
 HR-matting source/weights revision:
 `ZhengPeng7/BiRefNet_HR-matting@fecd89c4fca69964f82f9c40bc4428e78e06f448`.
 Worker image `splitter-background-worker:birefnet-hr-v1`, model directory
 `/opt/splitter-background-worker/models/birefnet-hr-matting` (read-only in worker).
+Model weight SHA256:
+`a5a4de698739ea5e0e8bbab28e1b293dde95092b87a442d566cbc585c53cef55`.
 
 Web release `19b8767` deployed through GitHub Actions run `41268024330`.
 The dedicated project's production tasks are `splitter-process-video` on
