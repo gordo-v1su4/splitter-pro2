@@ -22,11 +22,36 @@ then drag shots into positions. Dragging between filled positions swaps them;
 selecting a bank image and clicking a position also works. **Auto fill** fills
 empty positions in bank order. Images remain available in the bank.
 
-The 16:9 board exports as a PNG at 1920×1080 or 3840×2160, with the chosen gap
-and either whole-image fitting or cropped filling. Empty positions export with
+Every board and export is **16:9 landscape**. **Grid**, **Hero**, and **Strip** are
+adapted from PinDeck. A hero can span 2×2 cells (or more) in any corner.
+**Side hero** places a wider image on the left and two to five upright frames
+side by side on the right, with the wide frame twice the area of each small one.
+The hero can be on either side, with equal, 1.5×, 2×, or 3× widths.
+**Portrait panels** offers equal upright frames for portrait inputs, spanning
+the whole landscape sheet with no outer padding. Fill and crop is the default.
+**Mixed** combines two 9:16 portraits, four square details, and four wide frames
+in one edge-to-edge 16:9 sheet.
+Incoming images are never split.
+**Adjust framing** switches from rearranging positions to
+editing a placed image: choose Fit or Fill for that image, then drag inside a
+filled frame or use Left/Center/Right and Top/Middle/Bottom alignment buttons.
+Scale the selected image in 25% increments from 25% to 400%, or reset to 100%.
+Crop settings travel with the image when you rearrange it and apply to exports.
+PNG exports are 1920×1080 or 3840×2160, with the chosen gap and either whole-image
+fitting or cropped filling. Landscape and portrait source images are accepted
+in every layout. Empty positions export with
 the board's dark background. The board stays intact when switching app tabs;
-export before closing or reloading the page. Images are processed in the browser
-and are not uploaded to the server. The bank holds up to 100 images, 25 MB each.
+export before closing or reloading the page. Arrangement and export run in the
+browser. The bank holds up to 100 images, 100 MB each.
+
+Each shot has **Remove background**, which uploads that shot to the app server
+and adds a new opaque PNG to the bank without replacing the original or its
+board position. Choose any grayscale background using the black-to-white slider,
+or the Black / 50% gray / White presets. BiRefNet General Lite runs locally on
+the server through rembg/ONNX CPU; no Comfy service or external image API is
+required. Inputs are limited to 32 megapixels for removal. The model is baked
+into the Docker image; development caches it under `data/models` on first use.
+Images and results are processed in memory and are not saved on the server.
 
 **Split grids** is the separate tool for cutting existing grid images into panels.
 

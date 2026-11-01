@@ -7,7 +7,7 @@ from fastapi import BackgroundTasks, Body, FastAPI, File, Form, HTTPException, Q
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
-from . import image_split, projects, reviews
+from . import backgrounds, image_split, projects, reviews
 from .access_gate import (
     ACCESS_COOKIE_NAME,
     ACCESS_SESSION_TTL_SECONDS,
@@ -111,6 +111,21 @@ def create_app() -> FastAPI:
     @app.get("/docs", include_in_schema=False)
     def swagger_documentation() -> HTMLResponse:
         return swagger_ui_dark_html(openapi_url=app.openapi_url, title=f"{settings.app_name} — API")
+
+    @app.post("/api/storyboard/remove-background", tags=["Image split"])
+    def remove_shot_background(file: UploadFile = File(...), gray: int = Form(255, ge=0, le=255)):
+        source = file.file.read(backgrounds.MAX_BYTES + 1)
+        if len(source) > backgrounds.MAX_BYTES:
+            raise HTTPException(413, "Use an image up to 100 MB.")
+        try:
+            result = backgrounds.remove_background(source, gray)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).exception("Background removal failed")
+            raise HTTPException(503, "Background removal is unavailable. Please try again.") from exc
+        return Response(result, media_type="image/png", headers={"Cache-Control": "no-store"})
 
     @app.get("/api/health", tags=["Health"])
     def healthcheck() -> dict[str, str]:

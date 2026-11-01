@@ -44,6 +44,7 @@ def test_server_gate_locks_api_and_sets_http_only_cookie(temp_data_dir, monkeypa
         status = client.get("/api/access-gate")
         assert status.json() == {"required": True, "unlocked": False}
         assert client.get("/api/projects").status_code == 401
+        assert client.post("/api/storyboard/remove-background").status_code == 401
         assert client.get("/api/health").status_code == 200
 
         rejected = client.post("/api/access-gate", json={"pin": "nope"})
