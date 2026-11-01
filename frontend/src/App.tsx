@@ -3,6 +3,7 @@ import { Film } from 'lucide-react'
 
 import { AccessGate } from './components/access-gate'
 import { ImageSplitWorkspace } from './components/image-split-workspace'
+import { StoryboardWorkspace } from './components/storyboard-workspace'
 import { JobStatusPanel } from './components/job-status-panel'
 import { ReviewWorkspace } from './components/review-workspace'
 import { SegmentCard } from './components/segment-card'
@@ -21,7 +22,7 @@ import {
 } from './lib/api'
 import { formatDuration } from './lib/utils'
 
-type WorkspaceTab = 'projects' | 'reviews' | 'video' | 'image'
+type WorkspaceTab = 'projects' | 'reviews' | 'video' | 'image' | 'storyboard'
 
 function App() {
   const [workspace, setWorkspace] = useState<WorkspaceTab>('video')
@@ -200,9 +201,12 @@ function App() {
         <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <WorkspaceHeader activeTab={workspace} job={job} manifest={manifest} reviewsHref="/docs" />
           <div className="min-h-0 flex-1 overflow-y-auto bg-[#080808] p-2 sm:p-4">
+            <div hidden={workspace !== 'storyboard'}>
+              <StoryboardWorkspace />
+            </div>
             {workspace === 'image' ? (
               <ImageSplitWorkspace />
-            ) : workspace === 'projects' || workspace === 'reviews' ? (
+            ) : workspace === 'storyboard' ? null : workspace === 'projects' || workspace === 'reviews' ? (
               <ReviewWorkspace
                 view={workspace}
                 onOpenProjects={() => selectWorkspace('projects')}
@@ -273,6 +277,7 @@ function StudioSidebar({
     { tab: 'reviews', label: 'Reviews', sub: 'temporarily offline', disabled: true },
     { tab: 'video', label: 'Video process', sub: 'detect · frames · sheet' },
     { tab: 'image', label: 'Split grids', sub: 'image grids · crops' },
+    { tab: 'storyboard', label: 'Storyboard grids', sub: 'images · arrange · export' },
   ]
 
   if (collapsed) {
@@ -399,7 +404,7 @@ function WorkspaceHeader({
   manifest: JobManifest | null
   reviewsHref: string
 }) {
-  const title = activeTab === 'video' ? 'Video frame extraction' : activeTab === 'image' ? 'Image grid splitter' : activeTab === 'projects' ? 'Projects workspace' : 'Reviews queue'
+  const title = activeTab === 'video' ? 'Video frame extraction' : activeTab === 'image' ? 'Image grid splitter' : activeTab === 'storyboard' ? 'Storyboard grids' : activeTab === 'projects' ? 'Projects workspace' : 'Reviews queue'
   const status = activeTab === 'video'
     ? manifest
       ? `${manifest.segment_count} frames · contact sheet ready`
@@ -408,9 +413,11 @@ function WorkspaceHeader({
         : 'ready for source video'
     : activeTab === 'image'
       ? 'split uploaded grids into reviewable stills'
-      : activeTab === 'projects'
-        ? 'overview, working pages, project stack'
-        : 'image approval, publishing, project creation'
+      : activeTab === 'storyboard'
+        ? 'arrange images into a storyboard grid'
+        : activeTab === 'projects'
+          ? 'overview, working pages, project stack'
+          : 'image approval, publishing, project creation'
 
   return (
     <header className="flex min-h-9 shrink-0 items-center justify-between gap-3 border-b border-[#181818] bg-[#0c0c0c] px-3 py-2 sm:px-5">

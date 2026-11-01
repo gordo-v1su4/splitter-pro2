@@ -1,0 +1,55 @@
+/* PinDeck storyboard structure, using Splitter's existing type and green accent. */
+.sb-workspace { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 16px; max-width: 1680px; margin: 12px auto; }
+.sb-bank { min-width: 0; border: 1px solid #242424; background: #0c0c0c; padding: 12px; align-self: start; }
+.sb-bank.is-hot { border-color: var(--color-accent); background: var(--color-accent-soft); }
+.sb-section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.sb-section-head h1, .sb-section-head h2 { margin: 0; font-size: 13px; font-weight: 500; color: #d0d0d0; }
+.sb-section-head > span, .sb-section-head p { margin: 3px 0 0; color: #888; font-size: 10px; }
+.sb-upload { display: flex; min-height: 105px; align-items: center; justify-content: center; flex-direction: column; gap: 8px; border: 1px dashed #444; cursor: pointer; color: #aaa; font-size: 11px; }
+.sb-upload:hover, .sb-bank:focus-within .sb-upload { border-color: var(--color-accent); }
+.sb-upload small { color: #777; font-size: 9px; }
+.sb-bank-help, .sb-bank-empty { color: #888; font-size: 11px; line-height: 1.6; margin: 12px 0; }
+.sb-shot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 7px; max-height: 62vh; overflow-y: auto; padding: 2px; }
+.sb-shot { position: relative; min-width: 0; }
+.sb-thumb { display: block; position: relative; width: 100%; aspect-ratio: 16 / 9; padding: 0; border: 1px solid #333; background: #080808; overflow: hidden; cursor: grab; }
+.sb-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.sb-thumb.is-selected { border-color: var(--color-accent); outline: 1px solid var(--color-accent); }
+.sb-thumb.is-used img { opacity: .5; }
+.sb-used { position: absolute; inset: auto 0 0; display: flex; gap: 3px; align-items: center; color: var(--color-accent); background: #080808dd; padding: 2px 4px; font-size: 9px; }
+.sb-shot-name { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 9px; color: #888; margin-top: 4px; }
+.sb-builder { min-width: 0; }
+.sb-builder-head { min-height: 32px; }
+.sb-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 24px; padding: 0 9px; border: 1px solid #333; background: #101010; color: #aaa; font-size: 10px; white-space: nowrap; cursor: pointer; }
+.sb-action:hover { border-color: #666; color: #ddd; }
+.sb-action:disabled { opacity: .4; cursor: default; }
+.sb-export { border-color: var(--color-accent-line); background: var(--color-accent-soft); color: var(--color-accent); }
+.sb-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 0; border-block: 1px solid #242424; }
+.sb-presets { display: inline-flex; border: 1px solid #333; padding: 2px; gap: 2px; }
+.sb-presets button { height: 22px; padding: 0 8px; border: none; background: transparent; color: #999; font-size: 10px; cursor: pointer; }
+.sb-presets button[aria-pressed=true] { color: var(--color-accent); background: var(--color-accent-soft); }
+.sb-toolbar label { display: flex; align-items: center; gap: 5px; color: #888; font-size: 10px; }
+.sb-toolbar select { min-height: 24px; max-width: 145px; border: 1px solid #333; background: #101010; color: #bbb; padding: 2px 4px; font-size: 10px; }
+.sb-instructions { font-size: 11px; color: #999; line-height: 1.6; margin: 12px 0; min-height: 18px; overflow-wrap: anywhere; }
+.sb-board { display: grid; width: 100%; aspect-ratio: 16 / 9; background: #080808; outline: 1px solid #333; overflow: hidden; }
+.sb-slot { position: relative; min-width: 0; min-height: 0; outline: 1px dashed #303030; outline-offset: -1px; }
+.sb-slot.is-filled { outline: none; }
+.sb-slot-target { width: 100%; height: 100%; display: block; padding: 0; border: none; background: transparent; color: #777; cursor: pointer; overflow: hidden; }
+.sb-slot-target[draggable=true] { cursor: grab; }
+.sb-slot-target img { display: block; width: 100%; height: 100%; }
+.sb-slot.is-hot { outline: 2px solid var(--color-accent); outline-offset: -2px; background: var(--color-accent-soft); }
+.sb-empty-mark { display: flex; height: 100%; align-items: center; justify-content: center; gap: 6px; font-size: 10px; }
+.sb-remove { position: absolute; top: 4px; right: 4px; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: 1px solid #555; background: #080808dd; color: #ddd; cursor: pointer; opacity: 0; }
+.sb-slot:hover .sb-remove, .sb-slot:focus-within .sb-remove, .sb-shot:hover .sb-remove, .sb-shot:focus-within .sb-remove { opacity: 1; }
+.sb-workspace button:focus-visible, .sb-workspace select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.sb-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: #888; font-size: 10px; margin-top: 12px; }
+.sb-notice { min-height: 18px; font-size: 11px; color: var(--color-accent); margin: 10px 0 0; }
+.sb-error { color: #fca5a5; font-size: 11px; overflow-wrap: anywhere; }
+@media (hover: none) { .sb-remove { opacity: 1; } }
+@media (max-width: 1000px) { .sb-workspace { grid-template-columns: 190px minmax(0, 1fr); gap: 12px; } }
+@media (max-width: 640px) {
+  .sb-workspace { grid-template-columns: minmax(0, 1fr); }
+  .sb-shot-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); max-height: 180px; }
+  .sb-upload { min-height: 70px; }
+  .sb-bank-help { margin: 8px 0; }
+  .sb-toolbar { gap: 7px; }
+}

@@ -14,6 +14,22 @@ The video page offers three sampling modes before upload:
 - **Equal count** — creates an exact total (for example 10) across the complete video and extracts the midpoint image from every equal slice.
 - **Time step** — creates one slice and midpoint image every selected number of seconds, with a shorter final slice when needed.
 
+## Storyboard grids
+
+The separate **Storyboard grids** tab builds a grid from your own images. Drop PNG,
+JPG, or WebP files into the image bank, choose a 2×2, 3×3, 4×4, or 5×5 layout,
+then drag shots into positions. Dragging between filled positions swaps them;
+selecting a bank image and clicking a position also works. **Auto fill** fills
+empty positions in bank order. Images remain available in the bank.
+
+The 16:9 board exports as a PNG at 1920×1080 or 3840×2160, with the chosen gap
+and either whole-image fitting or cropped filling. Empty positions export with
+the board's dark background. The board stays intact when switching app tabs;
+export before closing or reloading the page. Images are processed in the browser
+and are not uploaded to the server. The bank holds up to 100 images, 25 MB each.
+
+**Split grids** is the separate tool for cutting existing grid images into panels.
+
 ## YouTube import
 
 In **Source**, choose **YouTube link**, select a split mode, then **Download and split**.
